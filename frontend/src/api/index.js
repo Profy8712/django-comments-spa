@@ -22,7 +22,6 @@ export async function apiPost(url, data) {
   return payload;
 }
 
-// Convenience wrappers for our API
 export function fetchComments(page = 1, ordering = "-created_at") {
   const params = new URLSearchParams({
     page: String(page),
@@ -38,3 +37,6 @@ export function fetchCaptcha() {
 export function createComment(data) {
   return apiPost("/api/comments/", data);
 }
+
+// backend base URL for media files (attachments)
+export const BACKEND_URL = "http://127.0.0.1:8000";
