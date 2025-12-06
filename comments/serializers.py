@@ -1,4 +1,5 @@
 import re
+
 import bleach
 from captcha.models import CaptchaStore
 from rest_framework import serializers
@@ -21,6 +22,15 @@ class AttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Attachment
         fields = ["id", "file", "uploaded_at"]
+
+
+class AttachmentCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a single attachment."""
+
+    class Meta:
+        model = Attachment
+        fields = ["id", "file", "comment", "uploaded_at"]
+        read_only_fields = ["id", "uploaded_at"]
 
 
 class CommentSerializer(serializers.ModelSerializer):
