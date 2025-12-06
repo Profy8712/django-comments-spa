@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "comments",
     "captcha",
+    "channels",
 
 ]
 
@@ -127,3 +128,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+ASGI_APPLICATION = "core.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}

@@ -72,6 +72,7 @@ export default {
       page: 1,
       ordering: "-created_at",
       loading: false,
+      ws: null,
     };
   },
   computed: {
@@ -83,7 +84,6 @@ export default {
     },
     currentComments() {
       if (!this.comments) return [];
-      // DRF pagination returns {results: [...]}
       return this.comments.results || this.comments;
     },
   },
@@ -108,9 +108,41 @@ export default {
       this.page = 1;
       await this.loadComments();
     },
+    setupWebSocket() {
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const wsUrl = `${protocol}://127.0.0.1:8000/ws/comments/`;
+
+      this.ws = new WebSocket(wsUrl);
+
+      this.ws.onopen = () => {
+        console.log("WebSocket connected");
+      };
+
+      this.ws.onmessage = async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "comment_created") {
+            await this.loadComments();
+          }
+        } catch (e) {
+          console.error("Failed to parse WS message", e);
+        }
+      };
+
+      this.ws.onclose = () => {
+        console.log("WebSocket disconnected");
+        this.ws = null;
+      };
+    },
   },
   async mounted() {
     await this.loadComments();
+    this.setupWebSocket();
+  },
+  beforeUnmount() {
+    if (this.ws) {
+      this.ws.close();
+    }
   },
 };
 </script>

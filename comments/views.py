@@ -1,15 +1,13 @@
-from rest_framework import generics, filters, parsers, status
-from rest_framework.views import APIView
-from rest_framework.response import Response
-
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
+from rest_framework import generics, filters, parsers, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Comment, Attachment
-from .serializers import (
-    CommentSerializer,
-    AttachmentCreateSerializer,
-)
+from .serializers import CommentSerializer, AttachmentCreateSerializer
 
 
 class CommentListCreateView(generics.ListCreateAPIView):
@@ -21,6 +19,19 @@ class CommentListCreateView(generics.ListCreateAPIView):
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["user_name", "email", "created_at"]
     ordering = ["-created_at"]  # LIFO by default
+
+    def perform_create(self, serializer):
+        """Save comment and notify WebSocket group."""
+        comment = serializer.save()
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "comments",
+            {
+                "type": "comment_created",
+                "comment_id": comment.id,
+            },
+        )
 
 
 class CommentDetailView(generics.RetrieveAPIView):
@@ -50,6 +61,7 @@ class AttachmentUploadView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         comment_id = kwargs.get("pk")
+
         try:
             comment = Comment.objects.get(pk=comment_id)
         except Comment.DoesNotExist:
@@ -65,6 +77,7 @@ class AttachmentUploadView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
+
         return Response(
             serializer.data,
             status=status.HTTP_201_CREATED,
