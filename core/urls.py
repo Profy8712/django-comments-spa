@@ -18,7 +18,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from comments.views import CaptchaAPIView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/comments/", include("comments.urls")),
+    path("api/captcha/", CaptchaAPIView.as_view(), name="api_captcha"),
+    path("captcha/", include("captcha.urls")),  # служебные урлы пакета
 ]
