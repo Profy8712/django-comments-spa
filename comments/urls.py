@@ -1,7 +1,14 @@
 from django.urls import path
-from .views import CommentListCreateView, CommentDetailView
+from .views import (
+    CommentListCreateView,
+    CommentDetailView,
+    CaptchaAPIView,
+    AttachmentUploadView,
+)
 
 urlpatterns = [
-    path("", CommentListCreateView.as_view(), name="comment_list"),
-    path("<int:pk>/", CommentDetailView.as_view(), name="comment_detail"),
+    path("comments/", CommentListCreateView.as_view()),
+    path("comments/<int:pk>/", CommentDetailView.as_view()),
+    path("captcha/", CaptchaAPIView.as_view()),
+    path("comments/<int:pk>/upload/", AttachmentUploadView.as_view()),
 ]

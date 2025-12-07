@@ -1,19 +1,25 @@
-const API_URL = import.meta.env.VITE_API_URL;
+// frontend/src/api/captcha.js
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export async function loadCaptcha() {
-  const response = await fetch(`${API_URL}/api/captcha/`, {
+  const resp = await fetch(`${API_URL}/api/captcha/`, {
     credentials: "include",
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to load captcha");
+  if (!resp.ok) {
+    throw new Error("Failed to load CAPTCHA");
   }
 
-  const data = await response.json();
+  const data = await resp.json();
+  const key = data.key;
+  let imageUrl = data.image; // "/captcha/image/...."
 
-  // Приводим к формату, который ожидает компонент:
+  if (imageUrl && imageUrl.startsWith("/")) {
+    imageUrl = `${API_URL}${imageUrl}`;
+  }
+
   return {
-    key: data.captcha_key,
-    image: `${API_URL}${data.captcha_image_url}`,
+    captcha_key: key,
+    captcha_image_url: imageUrl,
   };
 }

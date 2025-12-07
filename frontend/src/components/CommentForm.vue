@@ -66,12 +66,48 @@
         :class="{ 'has-error': errors.text }"
         rows="6"
         placeholder="Enter your comment..."
-      />
+      ></textarea>
+
       <p class="hint-text">
         Allowed pseudo-tags:
         [i], [strong], [code], [a]
       </p>
       <p v-if="errors.text" class="error-text">{{ errors.text }}</p>
+    </div>
+
+    <!-- Attachments -->
+    <div class="form-group">
+      <label class="form-label" for="attachments">
+        Attach files (images or .txt)
+      </label>
+      <input
+        id="attachments"
+        type="file"
+        class="form-input"
+        multiple
+        accept=".jpg,.jpeg,.png,.gif,.txt"
+        @change="onFilesChange"
+      />
+
+      <p class="hint-text">
+        Images: JPG, PNG, GIF (will be resized to max 320x240).<br />
+        Text: TXT ≤ 100 KB.
+      </p>
+
+      <ul v-if="selectedFiles.length" class="files-list">
+        <li
+          v-for="file in selectedFiles"
+          :key="file.id"
+          class="files-list-item"
+        >
+          <span>{{ file.file.name }} ({{ formatSize(file.file.size) }})</span>
+          <span v-if="file.error" class="error-text"> — {{ file.error }}</span>
+        </li>
+      </ul>
+
+      <p v-if="errors.attachments" class="error-text">
+        {{ errors.attachments }}
+      </p>
     </div>
 
     <!-- CAPTCHA -->
@@ -142,7 +178,7 @@
       <div
         class="preview-text"
         v-html="renderedPreview"
-      />
+      ></div>
     </div>
   </form>
 </template>
@@ -151,6 +187,9 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { loadCaptcha } from "@/api/captcha";
 import { createComment } from "@/api/comments";
+import { uploadAttachment } from "@/api/attachments";
+
+const emit = defineEmits(["created"]);
 
 const form = reactive({
   user_name: "",
@@ -164,6 +203,7 @@ const errors = reactive({
   email: null,
   text: null,
   captcha: null,
+  attachments: null,
 });
 
 const tagButtons = [
@@ -182,11 +222,50 @@ const captchaKey = ref(null);
 const captchaValue = ref("");
 const captchaLoading = ref(false);
 
+// attachments state
+// [{ id, file, error }]
+const selectedFiles = ref([]);
+let fileIdCounter = 0;
+
 function resetErrors() {
   errors.user_name = null;
   errors.email = null;
   errors.text = null;
   errors.captcha = null;
+  errors.attachments = null;
+}
+
+function onFilesChange(event) {
+  const files = Array.from(event.target.files || []);
+  selectedFiles.value = [];
+  errors.attachments = null;
+
+  const allowedExt = [".jpg", ".jpeg", ".png", ".gif", ".txt"];
+  const maxTxtSize = 100 * 1024; // 100 KB
+
+  for (const f of files) {
+    const lower = f.name.toLowerCase();
+    const ext = lower.slice(lower.lastIndexOf("."));
+
+    let error = null;
+
+    if (!allowedExt.includes(ext)) {
+      error = "Unsupported file type.";
+    } else if (ext === ".txt" && f.size > maxTxtSize) {
+      error = "TXT file must be ≤ 100 KB.";
+    }
+
+    selectedFiles.value.push({
+      id: ++fileIdCounter,
+      file: f,
+      error,
+    });
+  }
+
+  const anyValid = selectedFiles.value.some((f) => !f.error);
+  if (!anyValid && selectedFiles.value.length) {
+    errors.attachments = "All selected files are invalid.";
+  }
 }
 
 function validateForm() {
@@ -211,13 +290,22 @@ function validateForm() {
     valid = false;
   }
 
-  if (!captchaValue.trim()) {
+  if (!captchaValue.value.trim()) {
     errors.captcha = "CAPTCHA is required.";
     valid = false;
   }
 
   if (!captchaKey.value) {
     errors.captcha = "CAPTCHA is not loaded.";
+    valid = false;
+  }
+
+  const invalidOnly =
+    selectedFiles.value.length > 0 &&
+    !selectedFiles.value.some((f) => !f.error);
+
+  if (invalidOnly) {
+    errors.attachments = "All selected files are invalid.";
     valid = false;
   }
 
@@ -228,8 +316,12 @@ async function reloadCaptcha() {
   try {
     captchaLoading.value = true;
     const data = await loadCaptcha();
-    captchaKey.value = data.key;
-    captchaImage.value = data.image;
+
+    // ожидаем, что API вернёт {"captcha_key": "...", "captcha_image_url": "..."}
+    captchaKey.value = data.captcha_key;
+    captchaImage.value = data.captcha_image_url; // если тут относительный URL, добавь префикс в loadCaptcha
+    captchaValue.value = "";
+    errors.captcha = null;
   } catch (e) {
     console.error(e);
     errors.captcha = "Failed to load CAPTCHA.";
@@ -251,7 +343,7 @@ function wrapWithTag(tag) {
     return;
   }
 
-  // simple append; можно доработать с выделенным текстом через textarea ref
+  // простая вставка в конец; при желании можно доработать под выделение
   form.text += `${open}${close}`;
 }
 
@@ -270,11 +362,8 @@ function applyPseudoTags(str) {
   // [strong]...[/strong]
   safe = safe.replace(/\[strong](.+?)\[\/strong]/gis, "<strong>$1</strong>");
   // [code]...[/code]
-  safe = safe.replace(
-    /\[code](.+?)\[\/code]/gis,
-    "<code>$1</code>"
-  );
-  // [a href="..."]...[/a]  или [a]url[/a]
+  safe = safe.replace(/\[code](.+?)\[\/code]/gis, "<code>$1</code>");
+  // [a href="..."]...[/a] или [a]url[/a]
   safe = safe.replace(
     /\[a(?:\s+href="([^"]*)")?](.+?)\[\/a]/gis,
     (_, href, text) => {
@@ -297,11 +386,14 @@ function togglePreview() {
   showPreview.value = !showPreview.value;
 }
 
+function formatSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 async function onSubmit() {
   if (!validateForm()) {
-    if (!showPreview.value) {
-      showPreview.value = false;
-    }
     return;
   }
 
@@ -313,28 +405,40 @@ async function onSubmit() {
       email: form.email.trim(),
       homepage: form.homepage.trim() || null,
       text: form.text,
+      // имя поля должно совпадать с тем, что ждёт твой бэкенд:
+      // если у тебя в DRF-сериализаторе "captcha_value", поменяй здесь на него
       captcha_key: captchaKey.value,
       captcha_value: captchaValue.value.trim(),
     };
 
-    await createComment(payload);
+    const comment = await createComment(payload);
 
-    // reset form on success
+    const validFiles = selectedFiles.value.filter((f) => !f.error);
+
+    for (const f of validFiles) {
+      try {
+        await uploadAttachment(comment.id, f.file);
+      } catch (e) {
+        console.error("Failed to upload file:", f.file.name, e);
+      }
+    }
+
     form.user_name = "";
     form.email = "";
     form.homepage = "";
     form.text = "";
     captchaValue.value = "";
+    selectedFiles.value = [];
     showPreview.value = false;
     resetErrors();
 
-    // reload captcha for next comment
+    emit("created", comment);
+
     await reloadCaptcha();
   } catch (e) {
     console.error(e);
     errors.captcha =
       e?.message || "Failed to submit comment. Please try again.";
-    // тоже перезагрузим капчу на всякий случай
     await reloadCaptcha();
   } finally {
     submitting.value = false;
@@ -505,5 +609,15 @@ async function onSubmit() {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   font-size: 0.95rem;
+}
+
+.files-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 0.5rem;
+}
+
+.files-list-item {
+  font-size: 0.85rem;
 }
 </style>
