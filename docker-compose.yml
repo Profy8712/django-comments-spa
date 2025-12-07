@@ -3,8 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    # лучше вообще убрать container_name, тогда хостом будет просто "backend"
-    # container_name: comments_backend
+    container_name: comments_backend
     ports:
       - "8000:8000"
     volumes:
