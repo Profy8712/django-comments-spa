@@ -1,21 +1,29 @@
-from django.contrib import admin
-from django.urls import path, include
+# core/urls.py
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
 
 from comments.views import CaptchaAPIView
 
 urlpatterns = [
-    # Django Admin
+    # Django admin
     path("admin/", admin.site.urls),
 
-    # API: Comments (list, create, detail, upload attachments)
-    path("api/comments/", include("comments.urls")),
+    # Comments API (list, create, detail, upload)
+    path(
+        "api/comments/",
+        include(("comments.urls", "comments"), namespace="comments"),
+    ),
 
-    # API: CAPTCHA for SPA
-    path("api/captcha/", CaptchaAPIView.as_view(), name="api_captcha"),
+    # CAPTCHA JSON API for SPA
+    path(
+        "api/captcha/",
+        CaptchaAPIView.as_view(),
+        name="api_captcha",
+    ),
 
-    # Required for Django Simple Captcha admin & generation
+    # Django Simple Captcha routes (image generation, forms, etc.)
     path("captcha/", include("captcha.urls")),
 ]
 

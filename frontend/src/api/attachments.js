@@ -1,23 +1,25 @@
-const API_URL = import.meta.env.VITE_API_URL;
+// frontend/src/api/attachments.js
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+/**
+ * Upload a single attachment for the given comment.
+ * Backend URL: POST /api/comments/<id>/upload/
+ */
 export async function uploadAttachment(commentId, file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(
-    `${API_URL}/api/comments/${commentId}/attachments/`,
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
+  const resp = await fetch(`${API_URL}/api/comments/${commentId}/upload/`, {
+    method: "POST",
+    body: formData,
+  });
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
     throw new Error(
-      text || `Failed to upload attachment for comment ${commentId}`
+      `Failed to upload attachment (status ${resp.status}): ${text}`,
     );
   }
 
-  return await response.json();
+  return await resp.json();
 }

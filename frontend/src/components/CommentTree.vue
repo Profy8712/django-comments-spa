@@ -21,9 +21,24 @@
           :key="a.id"
           class="attachment-item"
         >
-          <a :href="backendUrl + a.file" target="_blank" rel="noopener noreferrer">
-            Attachment
-          </a>
+          <template v-if="isImage(a)">
+            <img
+              :src="backendUrl + a.file"
+              alt="Attachment image"
+              class="attachment-thumb"
+              @click="openLightbox(backendUrl + a.file)"
+            />
+          </template>
+
+          <template v-else>
+            <a
+              :href="backendUrl + a.file"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Download file
+            </a>
+          </template>
         </div>
       </div>
 
@@ -45,16 +60,28 @@
         />
       </div>
     </div>
+
+    <Lightbox
+      v-model="lightboxVisible"
+      :src="lightboxSrc"
+      alt="Attachment preview"
+      type="image"
+    />
   </div>
 </template>
 
 <script>
 import CommentForm from "./CommentForm.vue";
+import Lightbox from "./Lightbox.vue";
 import { BACKEND_URL } from "../api";
 
 export default {
   name: "CommentTree",
-  components: { CommentForm },
+  components: {
+    CommentForm,
+    Lightbox,
+    CommentTree: null, // will be set in created()
+  },
   props: {
     comments: {
       type: Array,
@@ -66,7 +93,13 @@ export default {
     return {
       replyTo: null,
       backendUrl: BACKEND_URL,
+      lightboxVisible: false,
+      lightboxSrc: "",
     };
+  },
+  created() {
+    // enable recursive component usage
+    this.$options.components.CommentTree = this.$options;
   },
   methods: {
     formatDate(value) {
@@ -80,6 +113,16 @@ export default {
       this.replyTo = null;
       this.$emit("changed");
     },
+    isImage(attachment) {
+      const path = (attachment.file || "").toLowerCase();
+      return [".jpg", ".jpeg", ".png", ".gif"].some((ext) =>
+        path.endsWith(ext)
+      );
+    },
+    openLightbox(url) {
+      this.lightboxSrc = url;
+      this.lightboxVisible = true;
+    },
   },
 };
 </script>
@@ -90,7 +133,7 @@ export default {
   padding: 0.75rem;
   margin-bottom: 0.75rem;
   border-radius: 6px;
-  background-color: #fff;
+  background-color: #ffffff;
 }
 
 .comment-header {
@@ -101,13 +144,13 @@ export default {
 }
 
 .email {
-  color: #666;
+  color: #666666;
 }
 
 .date {
   margin-left: auto;
   font-size: 0.8rem;
-  color: #999;
+  color: #999999;
 }
 
 .comment-text {
@@ -116,10 +159,27 @@ export default {
 
 .attachments {
   margin-bottom: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .attachment-item a {
   font-size: 0.85rem;
+}
+
+.attachment-thumb {
+  width: 80px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.attachment-thumb:hover {
+  transform: scale(1.05);
 }
 
 .reply-btn {

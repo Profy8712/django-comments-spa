@@ -1,5 +1,6 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 
@@ -16,7 +17,9 @@ from .serializers import (
 
 
 class CommentListCreateView(generics.ListCreateAPIView):
-    """List all comments or create a new comment."""
+    """
+    List all comments or create a new comment.
+    """
 
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
@@ -28,7 +31,7 @@ class CommentListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         comment = serializer.save()
 
-        # WS notification
+        # WebSocket notification
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             "comments",
@@ -45,18 +48,19 @@ class CommentDetailView(generics.RetrieveAPIView):
 
 
 class CaptchaAPIView(APIView):
-    """SPA service – returns key + image url."""
+    """
+    SPA service – returns JSON with key and image url.
+
+    GET /api/captcha/ -> { "key": "<hash>", "image": "/captcha/image/<hash>/" }
+    """
+
+    authentication_classes = []
+    permission_classes = []
 
     def get(self, request, *args, **kwargs):
         key = CaptchaStore.generate_key()
         url = captcha_image_url(key)
-
-        return Response(
-            {
-                "key": key,
-                "image": url,
-            }
-        )
+        return Response({"key": key, "image": url}, status=status.HTTP_200_OK)
 
 
 class AttachmentUploadView(generics.CreateAPIView):
@@ -86,7 +90,4 @@ class AttachmentUploadView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        return Response(
-            serializer.data,
-            status=status.HTTP_201_CREATED,
-        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

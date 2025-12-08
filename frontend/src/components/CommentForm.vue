@@ -46,7 +46,6 @@
     <div class="form-group">
       <label class="form-label" for="text">Text *</label>
 
-      <!-- pseudo-tags toolbar -->
       <div class="toolbar">
         <button
           v-for="btn in tagButtons"
@@ -66,11 +65,11 @@
         :class="{ 'has-error': errors.text }"
         rows="6"
         placeholder="Enter your comment..."
+        data-enable-grammarly="false"
       ></textarea>
 
       <p class="hint-text">
-        Allowed pseudo-tags:
-        [i], [strong], [code], [a]
+        Allowed pseudo-tags: [i], [strong], [code], [a]
       </p>
       <p v-if="errors.text" class="error-text">{{ errors.text }}</p>
     </div>
@@ -189,6 +188,13 @@ import { loadCaptcha } from "@/api/captcha";
 import { createComment } from "@/api/comments";
 import { uploadAttachment } from "@/api/attachments";
 
+const props = defineProps({
+  parentId: {
+    type: Number,
+    default: null,
+  },
+});
+
 const emit = defineEmits(["created"]);
 
 const form = reactive({
@@ -222,9 +228,8 @@ const captchaKey = ref(null);
 const captchaValue = ref("");
 const captchaLoading = ref(false);
 
-// attachments state
-// [{ id, file, error }]
-const selectedFiles = ref([]);
+// attachments
+const selectedFiles = ref([]); // [{ id, file, error }]
 let fileIdCounter = 0;
 
 function resetErrors() {
@@ -241,7 +246,7 @@ function onFilesChange(event) {
   errors.attachments = null;
 
   const allowedExt = [".jpg", ".jpeg", ".png", ".gif", ".txt"];
-  const maxTxtSize = 100 * 1024; // 100 KB
+  const maxTxtSize = 100 * 1024;
 
   for (const f of files) {
     const lower = f.name.toLowerCase();
@@ -317,14 +322,15 @@ async function reloadCaptcha() {
     captchaLoading.value = true;
     const data = await loadCaptcha();
 
-    // ожидаем, что API вернёт {"captcha_key": "...", "captcha_image_url": "..."}
-    captchaKey.value = data.captcha_key;
-    captchaImage.value = data.captcha_image_url; // если тут относительный URL, добавь префикс в loadCaptcha
+    // Support both { key, image } and { captcha_key, captcha_image_url }
+    captchaKey.value = data.key ?? data.captcha_key;
+    captchaImage.value = data.image ?? data.captcha_image_url;
     captchaValue.value = "";
     errors.captcha = null;
   } catch (e) {
     console.error(e);
     errors.captcha = "Failed to load CAPTCHA.";
+    captchaImage.value = null;
   } finally {
     captchaLoading.value = false;
   }
@@ -343,7 +349,6 @@ function wrapWithTag(tag) {
     return;
   }
 
-  // простая вставка в конец; при желании можно доработать под выделение
   form.text += `${open}${close}`;
 }
 
@@ -357,13 +362,9 @@ function escapeHtml(str) {
 function applyPseudoTags(str) {
   let safe = escapeHtml(str);
 
-  // [i]...[/i]
   safe = safe.replace(/\[i](.+?)\[\/i]/gis, "<i>$1</i>");
-  // [strong]...[/strong]
   safe = safe.replace(/\[strong](.+?)\[\/strong]/gis, "<strong>$1</strong>");
-  // [code]...[/code]
   safe = safe.replace(/\[code](.+?)\[\/code]/gis, "<code>$1</code>");
-  // [a href="..."]...[/a] или [a]url[/a]
   safe = safe.replace(
     /\[a(?:\s+href="([^"]*)")?](.+?)\[\/a]/gis,
     (_, href, text) => {
@@ -405,16 +406,17 @@ async function onSubmit() {
       email: form.email.trim(),
       homepage: form.homepage.trim() || null,
       text: form.text,
-      // имя поля должно совпадать с тем, что ждёт твой бэкенд:
-      // если у тебя в DRF-сериализаторе "captcha_value", поменяй здесь на него
       captcha_key: captchaKey.value,
       captcha_value: captchaValue.value.trim(),
     };
 
+    if (props.parentId) {
+      payload.parent = props.parentId;
+    }
+
     const comment = await createComment(payload);
 
     const validFiles = selectedFiles.value.filter((f) => !f.error);
-
     for (const f of validFiles) {
       try {
         await uploadAttachment(comment.id, f.file);
@@ -433,12 +435,20 @@ async function onSubmit() {
     resetErrors();
 
     emit("created", comment);
-
     await reloadCaptcha();
   } catch (e) {
     console.error(e);
-    errors.captcha =
-      e?.message || "Failed to submit comment. Please try again.";
+    if (e && typeof e === "object") {
+      if (Array.isArray(e.captcha_value)) {
+        errors.captcha = e.captcha_value.join(" ");
+      } else if (Array.isArray(e.non_field_errors)) {
+        errors.captcha = e.non_field_errors.join(" ");
+      } else {
+        errors.captcha = "Failed to submit comment.";
+      }
+    } else {
+      errors.captcha = "Failed to submit comment.";
+    }
     await reloadCaptcha();
   } finally {
     submitting.value = false;

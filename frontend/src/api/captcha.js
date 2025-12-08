@@ -1,4 +1,3 @@
-// frontend/src/api/captcha.js
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export async function loadCaptcha() {
@@ -10,16 +9,15 @@ export async function loadCaptcha() {
     throw new Error("Failed to load CAPTCHA");
   }
 
-  const data = await resp.json();
-  const key = data.key;
-  let imageUrl = data.image; // "/captcha/image/...."
+  const data = await resp.json(); // { key, image }
 
-  if (imageUrl && imageUrl.startsWith("/")) {
+  let imageUrl = data.image;
+  if (imageUrl.startsWith("/")) {
     imageUrl = `${API_URL}${imageUrl}`;
   }
 
   return {
-    captcha_key: key,
-    captcha_image_url: imageUrl,
+    key: data.key,
+    image: imageUrl,
   };
 }
