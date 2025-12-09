@@ -28,8 +28,8 @@
 
       <div v-else>
         <CommentTree
-          v-if="currentComments.length"
-          :comments="currentComments"
+          v-if="rootComments.length"
+          :comments="rootComments"
           @changed="loadComments"
         />
 
@@ -86,6 +86,13 @@ export default {
       if (!this.comments) return [];
       return this.comments.results || this.comments;
     },
+    // show only root comments at the top level;
+    // nested replies are rendered from comment.children in CommentTree
+    rootComments() {
+      return this.currentComments.filter(
+        (comment) => comment.parent === null || comment.parent === undefined
+      );
+    },
   },
   methods: {
     async loadComments() {
@@ -130,7 +137,7 @@ export default {
           const data = JSON.parse(event.data);
 
           if (data.type === "comment_created") {
-            // Do not reset the page; just refresh the current one.
+            // Refresh the current page when a new comment is created.
             await this.loadComments();
           }
         } catch (e) {

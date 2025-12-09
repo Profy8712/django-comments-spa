@@ -21,24 +21,24 @@
         class="attachments"
       >
         <div
-          v-for="a in comment.attachments"
-          :key="a.id"
+          v-for="attachment in comment.attachments"
+          :key="attachment.id"
           class="attachment-item"
         >
           <!-- image preview with lightbox -->
           <img
-            v-if="isImageAttachment(a)"
+            v-if="isImageAttachment(attachment)"
             class="attachment-thumb"
-            :src="resolveFileUrl(a.file)"
+            :src="resolveFileUrl(attachment.file)"
             alt="Attachment image"
-            @click="openLightbox(resolveFileUrl(a.file))"
+            @click="openLightbox(resolveFileUrl(attachment.file))"
           />
 
           <!-- non-image file -->
           <a
             v-else
             class="attachment-link"
-            :href="resolveFileUrl(a.file)"
+            :href="resolveFileUrl(attachment.file)"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -56,13 +56,18 @@
       </button>
 
       <div v-if="replyTo === comment.id" class="reply-form">
-        <CommentForm @created="handleCreated" />
+        <!-- important: pass parent-id so the reply is linked as a child -->
+        <CommentForm
+          :parent-id="comment.id"
+          @created="handleCreated"
+        />
       </div>
 
       <div
         v-if="comment.children && comment.children.length"
         class="children"
       >
+        <!-- recursive rendering of nested comments -->
         <CommentTree
           :comments="comment.children"
           @changed="handleCreated"
@@ -123,7 +128,9 @@ export default {
     toggleReply(id) {
       this.replyTo = this.replyTo === id ? null : id;
     },
-    handleCreated() {
+    async handleCreated() {
+      // after a reply is created, close the reply form
+      // and notify the parent to reload comments
       this.replyTo = null;
       this.$emit("changed");
     },
