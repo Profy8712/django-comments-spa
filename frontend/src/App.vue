@@ -4,7 +4,7 @@
 
     <section class="section">
       <h2>New comment</h2>
-      <CommentForm @created="loadComments" />
+      <CommentForm @created="handleCreated" />
     </section>
 
     <section class="section">
@@ -101,11 +101,18 @@ export default {
     },
     async changePage(delta) {
       this.page += delta;
-      if (this.page < 1) this.page = 1;
+      if (this.page < 1) {
+        this.page = 1;
+      }
       await this.loadComments();
     },
     async onOrderingChange() {
       this.page = 1;
+      await this.loadComments();
+    },
+    async handleCreated() {
+      // Do not change the current page.
+      // Simply reload comments for the active page.
       await this.loadComments();
     },
     setupWebSocket() {
@@ -121,11 +128,13 @@ export default {
       this.ws.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
+
           if (data.type === "comment_created") {
+            // Do not reset the page; just refresh the current one.
             await this.loadComments();
           }
         } catch (e) {
-          console.error("Failed to parse WS message", e);
+          console.error("Failed to parse WebSocket message", e);
         }
       };
 

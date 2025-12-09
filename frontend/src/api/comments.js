@@ -1,5 +1,22 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
+export async function fetchComments(page = 1, ordering = "-created_at") {
+  const params = new URLSearchParams({
+    page: String(page),
+    ordering,
+  });
+
+  const response = await fetch(`${API_URL}/api/comments/?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch comments: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 export async function createComment(payload) {
   const response = await fetch(`${API_URL}/api/comments/`, {
     method: "POST",
