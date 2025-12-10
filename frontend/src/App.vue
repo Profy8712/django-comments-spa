@@ -27,11 +27,35 @@
       </div>
 
       <div v-else>
-        <CommentTree
-          v-if="rootComments.length"
-          :comments="rootComments"
-          @changed="loadComments"
-        />
+        <div v-if="currentComments.length">
+          <!-- root comments table -->
+          <table class="comments-table">
+            <thead>
+              <tr>
+                <th>User name</th>
+                <th>E-mail</th>
+                <th>Created at</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="comment in currentComments"
+                :key="comment.id"
+              >
+                <td>{{ comment.user_name }}</td>
+                <td>{{ comment.email }}</td>
+                <td>{{ formatDate(comment.created_at) }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- threaded view below the table -->
+          <h3 class="thread-title">Thread view</h3>
+          <CommentTree
+            :comments="currentComments"
+            @changed="loadComments"
+          />
+        </div>
 
         <p v-else>No comments yet.</p>
 
@@ -86,13 +110,6 @@ export default {
       if (!this.comments) return [];
       return this.comments.results || this.comments;
     },
-    // show only root comments at the top level;
-    // nested replies are rendered from comment.children in CommentTree
-    rootComments() {
-      return this.currentComments.filter(
-        (comment) => comment.parent === null || comment.parent === undefined
-      );
-    },
   },
   methods: {
     async loadComments() {
@@ -137,7 +154,7 @@ export default {
           const data = JSON.parse(event.data);
 
           if (data.type === "comment_created") {
-            // Refresh the current page when a new comment is created.
+            // Refresh the current page when a new comment appears.
             await this.loadComments();
           }
         } catch (e) {
@@ -149,6 +166,11 @@ export default {
         console.log("WebSocket disconnected");
         this.ws = null;
       };
+    },
+    formatDate(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      return date.toLocaleString();
     },
   },
   async mounted() {
@@ -193,5 +215,30 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.comments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.comments-table th,
+.comments-table td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+}
+
+.comments-table th {
+  background-color: #f9fafb;
+  text-align: left;
+  font-weight: 600;
+}
+
+.thread-title {
+  margin: 0.5rem 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
 }
 </style>
