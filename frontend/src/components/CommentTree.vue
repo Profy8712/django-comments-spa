@@ -6,156 +6,280 @@
       class="comment-item"
     >
       <div class="comment-header">
-        <strong>{{ comment.user_name }}</strong>
+        <strong class="user-name">{{ comment.user_name }}</strong>
         <span class="email">{{ comment.email }}</span>
         <span class="date">{{ formatDate(comment.created_at) }}</span>
       </div>
 
-      <!-- SAFE HTML RENDER -->
       <div
         class="comment-text"
-        v-html="renderSafeHtml(comment.text)"
+        v-html="renderText(comment.text)"
       ></div>
 
-      <!-- Attachments -->
-      <div v-if="comment.attachments.length" class="attachments">
+      <div
+        v-if="comment.attachments && comment.attachments.length"
+        class="attachments"
+      >
         <div
-          v-for="file in comment.attachments"
-          :key="file.id"
-          class="attachment"
+          v-for="a in comment.attachments"
+          :key="a.id"
+          class="attachment-item"
         >
-          <template v-if="isImage(file.file)">
-            <img
-              :src="file.file"
-              class="preview-image"
-              @click="openLightbox(file.file)"
-            />
-          </template>
+          <!-- image preview with lightbox -->
+          <img
+            v-if="isImageAttachment(a)"
+            class="attachment-thumb"
+            :src="resolveFileUrl(a.file)"
+            alt="Attachment image"
+            @click="openLightbox(resolveFileUrl(a.file))"
+          />
 
-          <template v-else>
-            <a :href="file.file" download>Download file</a>
-          </template>
+          <!-- non-image file -->
+          <a
+            v-else
+            class="attachment-link"
+            :href="resolveFileUrl(a.file)"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Download file
+          </a>
         </div>
       </div>
 
-      <!-- Reply button -->
-      <button class="reply-button" @click="startReply(comment.id)">
-        Reply
+      <button
+        type="button"
+        class="reply-btn"
+        @click="toggleReply(comment.id)"
+      >
+        {{ replyTo === comment.id ? "Cancel reply" : "Reply" }}
       </button>
 
-      <!-- Nested children -->
-      <CommentTree
+      <div v-if="replyTo === comment.id" class="reply-form">
+        <CommentForm @created="handleCreated" />
+      </div>
+
+      <div
         v-if="comment.children && comment.children.length"
-        :comments="comment.children"
-        @changed="$emit('changed')"
-      />
+        class="children"
+      >
+        <CommentTree
+          :comments="comment.children"
+          @changed="handleCreated"
+        />
+      </div>
     </div>
 
-    <!-- Lightbox overlay -->
-    <div v-if="lightboxImage" class="lightbox-overlay" @click="closeLightbox">
-      <img :src="lightboxImage" class="lightbox-image" />
+    <!-- lightbox overlay -->
+    <div
+      v-if="lightboxSrc"
+      class="lightbox-overlay"
+      @click="closeLightbox"
+    >
+      <img
+        :src="lightboxSrc"
+        alt="Attachment preview"
+        class="lightbox-image"
+      />
+      <button
+        type="button"
+        class="lightbox-close"
+        @click.stop="closeLightbox"
+        aria-label="Close"
+      >
+        ×
+      </button>
     </div>
   </div>
 </template>
 
 <script>
-import { renderSafeHtml } from "../helpers/render.js";
+import CommentForm from "./CommentForm.vue";
+import { BACKEND_URL } from "../api";
+import { renderSafeHtml } from "../helpers/render";
 
 export default {
   name: "CommentTree",
+  components: { CommentForm },
   props: {
     comments: {
       type: Array,
       required: true,
     },
   },
-  methods: {
-    renderSafeHtml,
-    formatDate(value) {
-      if (!value) return "";
-      return new Date(value).toLocaleString();
-    },
-    isImage(url) {
-      return /\.(jpg|jpeg|png|gif)$/i.test(url);
-    },
-    openLightbox(src) {
-      this.lightboxImage = src;
-    },
-    closeLightbox() {
-      this.lightboxImage = null;
-    },
-    startReply(commentId) {
-      this.$emit("reply", commentId);
-    },
-  },
+  emits: ["changed"],
   data() {
     return {
-      lightboxImage: null,
+      replyTo: null,
+      backendUrl: BACKEND_URL,
+      lightboxSrc: null,
     };
+  },
+  methods: {
+    formatDate(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      return date.toLocaleString();
+    },
+    toggleReply(id) {
+      this.replyTo = this.replyTo === id ? null : id;
+    },
+    handleCreated() {
+      this.replyTo = null;
+      this.$emit("changed");
+    },
+    renderText(text) {
+      return renderSafeHtml(text || "");
+    },
+    resolveFileUrl(file) {
+      if (!file) return "";
+      if (file.startsWith("http://") || file.startsWith("https://")) {
+        return file;
+      }
+      if (file.startsWith("/")) {
+        return `${this.backendUrl}${file}`;
+      }
+      return `${this.backendUrl}/${file}`;
+    },
+    isImageAttachment(attachment) {
+      if (!attachment || !attachment.file) return false;
+      const lower = attachment.file.toLowerCase();
+      const exts = [".jpg", ".jpeg", ".png", ".gif"];
+      return exts.some((ext) => lower.endsWith(ext));
+    },
+    openLightbox(src) {
+      this.lightboxSrc = src;
+    },
+    closeLightbox() {
+      this.lightboxSrc = null;
+    },
   },
 };
 </script>
 
 <style scoped>
 .comment-tree {
-  margin-left: 1rem;
+  margin-top: 1.5rem;
 }
 
 .comment-item {
-  margin-bottom: 1.2rem;
-  padding-left: 0.5rem;
-  border-left: 2px solid #ddd;
+  border: 1px solid #e5e7eb;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.9rem;
+  border-radius: 10px;
+  background-color: #ffffff;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
 }
 
 .comment-header {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
   font-size: 0.9rem;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.35rem;
+}
+
+.user-name {
+  font-weight: 600;
 }
 
 .email {
-  color: #666;
-  margin-left: 0.5rem;
+  color: #6b7280;
 }
 
 .date {
-  color: #999;
-  margin-left: 0.5rem;
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #9ca3af;
 }
 
 .comment-text {
-  margin: 0.3rem 0 0.5rem;
-  line-height: 1.4;
+  margin: 0.35rem 0 0.6rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.preview-image {
-  width: 120px;
-  cursor: pointer;
-  border-radius: 4px;
-  margin-right: 0.5rem;
+.attachments {
+  margin-bottom: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
+
+.attachment-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.attachment-thumb {
+  max-width: 130px;
+  max-height: 130px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.attachment-thumb:hover {
+  transform: scale(1.04);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+.attachment-link {
+  font-size: 0.85rem;
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.reply-btn {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  cursor: pointer;
+}
+
+.reply-btn:hover {
+  background-color: #e5f0ff;
+}
+
+.children {
+  margin-left: 1.5rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid #f3f4f6;
+  margin-top: 0.7rem;
+}
+
+/* lightbox styles */
 
 .lightbox-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
+  z-index: 9999;
 }
 
 .lightbox-image {
   max-width: 90%;
   max-height: 90%;
-  border-radius: 6px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-.reply-button {
-  margin-top: 0.3rem;
-  padding: 3px 7px;
-  font-size: 0.8rem;
+.lightbox-close {
+  position: absolute;
+  top: 20px;
+  right: 30px;
+  font-size: 2.5rem;
+  background: transparent;
+  border: none;
+  color: #f9fafb;
   cursor: pointer;
+  line-height: 1;
 }
 </style>
