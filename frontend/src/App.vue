@@ -27,35 +27,36 @@
       </div>
 
       <div v-else>
-        <div v-if="currentComments.length">
-          <!-- root comments table -->
-          <table class="comments-table">
-            <thead>
-              <tr>
-                <th>User name</th>
-                <th>E-mail</th>
-                <th>Created at</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="comment in currentComments"
-                :key="comment.id"
-              >
-                <td>{{ comment.user_name }}</td>
-                <td>{{ comment.email }}</td>
-                <td>{{ formatDate(comment.created_at) }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Root comments table -->
+        <table
+          v-if="currentComments.length"
+          class="comments-table"
+        >
+          <thead>
+            <tr>
+              <th>User Name</th>
+              <th>Email</th>
+              <th>Created at</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="comment in currentComments"
+              :key="comment.id"
+            >
+              <td>{{ comment.user_name }}</td>
+              <td>{{ comment.email }}</td>
+              <td>{{ formatDate(comment.created_at) }}</td>
+            </tr>
+          </tbody>
+        </table>
 
-          <!-- threaded view below the table -->
-          <h3 class="thread-title">Thread view</h3>
-          <CommentTree
-            :comments="currentComments"
-            @changed="loadComments"
-          />
-        </div>
+        <!-- Nested tree view -->
+        <CommentTree
+          v-if="currentComments.length"
+          :comments="currentComments"
+          @changed="loadComments"
+        />
 
         <p v-else>No comments yet.</p>
 
@@ -139,6 +140,11 @@ export default {
       // Simply reload comments for the active page.
       await this.loadComments();
     },
+    formatDate(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      return date.toLocaleString();
+    },
     setupWebSocket() {
       const protocol = window.location.protocol === "https:" ? "wss" : "ws";
       const wsUrl = `${protocol}://127.0.0.1:8000/ws/comments/`;
@@ -154,7 +160,7 @@ export default {
           const data = JSON.parse(event.data);
 
           if (data.type === "comment_created") {
-            // Refresh the current page when a new comment appears.
+            // Do not reset the page; just refresh the current one.
             await this.loadComments();
           }
         } catch (e) {
@@ -166,11 +172,6 @@ export default {
         console.log("WebSocket disconnected");
         this.ws = null;
       };
-    },
-    formatDate(value) {
-      if (!value) return "";
-      const date = new Date(value);
-      return date.toLocaleString();
     },
   },
   async mounted() {
@@ -217,28 +218,27 @@ export default {
   gap: 0.5rem;
 }
 
+/* Root comments table */
+
 .comments-table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 1rem;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .comments-table th,
 .comments-table td {
   border: 1px solid #e5e7eb;
-  padding: 0.5rem 0.75rem;
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+}
+
+.comments-table thead {
+  background-color: #f3f4f6;
 }
 
 .comments-table th {
-  background-color: #f9fafb;
-  text-align: left;
-  font-weight: 600;
-}
-
-.thread-title {
-  margin: 0.5rem 0 0.75rem;
-  font-size: 1rem;
   font-weight: 600;
 }
 </style>
