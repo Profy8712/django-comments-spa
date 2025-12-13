@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 from typing import List
 
@@ -21,6 +22,9 @@ def env_list(name: str, default: str = "") -> List[str]:
     return [x.strip() for x in value.split(",") if x.strip()]
 
 
+# =============================================================================
+# Core
+# =============================================================================
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-env")
 DEBUG = env_bool("DJANGO_DEBUG", "1")
 
@@ -35,7 +39,9 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 
-
+# =============================================================================
+# Applications
+# =============================================================================
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -49,12 +55,15 @@ INSTALLED_APPS = [
     "captcha",
     "channels",
     "django_extensions",
-
     "django_elasticsearch_dsl",
 
+    # JWT (blacklist for logout + refresh rotation)
+    "rest_framework_simplejwt.token_blacklist",
+
+    # local apps
+    "accounts",
     "comments",
 ]
-
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -68,7 +77,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-
 
 ROOT_URLCONF = "core.urls"
 
@@ -90,7 +98,9 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 ASGI_APPLICATION = "core.asgi.application"
 
-
+# =============================================================================
+# Database
+# =============================================================================
 DB_ENGINE = os.getenv("DB_ENGINE", "postgres").lower()
 
 if DB_ENGINE == "sqlite":
@@ -112,7 +122,9 @@ else:
         }
     }
 
-
+# =============================================================================
+# Auth / i18n / static
+# =============================================================================
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -120,12 +132,10 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "UTC")
 USE_I18N = True
 USE_TZ = True
-
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -135,13 +145,32 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-
+# =============================================================================
+# DRF + JWT
+# =============================================================================
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": int(os.getenv("DRF_PAGE_SIZE", "25")),
 }
 
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(os.getenv("JWT_ACCESS_MINUTES", "30"))
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(os.getenv("JWT_REFRESH_DAYS", "7"))
+    ),
+    "ROTATE_REFRESH_TOKENS": env_bool("JWT_ROTATE_REFRESH_TOKENS", "1"),
+    "BLACKLIST_AFTER_ROTATION": env_bool("JWT_BLACKLIST_AFTER_ROTATION", "1"),
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
 
+# =============================================================================
+# CORS + CSRF
+# =============================================================================
 FRONTEND_ORIGINS = env_list(
     "FRONTEND_ORIGINS",
     "http://localhost:5173,http://127.0.0.1:5173",
@@ -155,13 +184,13 @@ CSRF_TRUSTED_ORIGINS = env_list(
     ",".join(FRONTEND_ORIGINS),
 )
 
-
+# =============================================================================
+# Channels
+# =============================================================================
 CHANNEL_LAYER = os.getenv("CHANNEL_LAYER", "redis").lower()
 
 if CHANNEL_LAYER == "inmemory":
-    CHANNEL_LAYERS = {
-        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
-    }
+    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 else:
     CHANNEL_LAYERS = {
         "default": {
@@ -177,7 +206,9 @@ else:
         }
     }
 
-
+# =============================================================================
+# Celery
+# =============================================================================
 CELERY_BROKER_URL = os.getenv(
     "CELERY_BROKER_URL",
     "amqp://guest:guest@rabbitmq:5672//",
@@ -193,21 +224,20 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = os.getenv("CELERY_TIMEZONE", "UTC")
 
-
 # =============================================================================
 # Elasticsearch
 # =============================================================================
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
 
 ELASTICSEARCH_DSL = {
-    "default": {
-        "hosts": ELASTICSEARCH_HOST,
-    }
+    "default": {"hosts": ELASTICSEARCH_HOST},
 }
 
 ELASTICSEARCH_DSL_AUTOSYNC = env_bool("ELASTICSEARCH_DSL_AUTOSYNC", "1")
 
-
+# =============================================================================
+# Security
+# =============================================================================
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
@@ -216,7 +246,9 @@ SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", "0")
 SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", "0")
 CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", "0")
 
-
+# =============================================================================
+# Logging
+# =============================================================================
 LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
 
 LOGGING = {

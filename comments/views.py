@@ -18,6 +18,11 @@ from .serializers import (
 
 
 class CommentListCreateView(generics.ListCreateAPIView):
+    """
+    GET: List root comments (with nested children via prefetch).
+    POST: Create a new comment (captcha required).
+    """
+
     serializer_class = CommentSerializer
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["user_name", "email", "created_at"]
@@ -39,6 +44,7 @@ class CommentListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         comment = serializer.save()
 
+        # notify all websocket clients
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             "comments",
@@ -47,6 +53,10 @@ class CommentListCreateView(generics.ListCreateAPIView):
 
 
 class CommentDetailView(generics.RetrieveAPIView):
+    """
+    Retrieve a single comment (with attachments and nested children prefetch).
+    """
+
     queryset = Comment.objects.all().prefetch_related(
         "attachments",
         "children",
@@ -58,6 +68,11 @@ class CommentDetailView(generics.RetrieveAPIView):
 
 
 class CaptchaAPIView(APIView):
+    """
+    GET /api/captcha/
+    -> { "key": "<hash>", "image": "/captcha/image/<hash>/" }
+    """
+
     authentication_classes = []
     permission_classes = []
 
@@ -68,6 +83,11 @@ class CaptchaAPIView(APIView):
 
 
 class AttachmentUploadView(generics.CreateAPIView):
+    """
+    POST /api/comments/<pk>/upload/
+    Upload a single attachment for an existing comment.
+    """
+
     serializer_class = AttachmentCreateSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
@@ -90,6 +110,11 @@ class AttachmentUploadView(generics.CreateAPIView):
 
 
 class CommentSearchAPIView(APIView):
+    """
+    GET /api/search/comments/?q=...
+    Elasticsearch search: text, user_name, email.
+    """
+
     serializer_class = CommentSearchResultSerializer
 
     def get(self, request, *args, **kwargs):
@@ -110,19 +135,19 @@ class CommentSearchAPIView(APIView):
 
         res = search.execute()
 
-        items = []
-        for hit in res:
-            items.append(
-                {
-                    "id": int(hit.id),
-                    "user_name": getattr(hit, "user_name", None),
-                    "email": getattr(hit, "email", None),
-                    "text": getattr(hit, "text", None),
-                    "created_at": getattr(hit, "created_at", None),
-                }
-            )
+        items = [
+            {
+                "id": int(hit.id),
+                "user_name": getattr(hit, "user_name", None),
+                "email": getattr(hit, "email", None),
+                "text": getattr(hit, "text", None),
+                "created_at": getattr(hit, "created_at", None),
+            }
+            for hit in res
+        ]
 
         data = self.serializer_class(items, many=True).data
+
         total = getattr(res.hits, "total", None)
         total_value = getattr(total, "value", len(items)) if total else len(items)
 
