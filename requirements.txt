@@ -13,3 +13,6 @@ daphne
 django-cors-headers
 psycopg2-binary==2.9.9
 channels-redis
+celery==5.4.0
+kombu==5.3.7
+django-extensions

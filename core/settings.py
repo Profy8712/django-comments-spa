@@ -5,9 +5,9 @@ from typing import List
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Helpers
-# -----------------------------------------------------------------------------
+# =============================================================================
 def env(name: str, default: str | None = None) -> str:
     value = os.getenv(name, default)
     if value is None:
@@ -24,9 +24,9 @@ def env_list(name: str, default: str = "") -> List[str]:
     return [x.strip() for x in value.split(",") if x.strip()]
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Security
-# -----------------------------------------------------------------------------
+# =============================================================================
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-env")
 DEBUG = env_bool("DJANGO_DEBUG", "1")
 
@@ -35,18 +35,16 @@ ALLOWED_HOSTS = env_list(
     "localhost,127.0.0.1,comments_backend,comments_frontend",
 )
 
-# If you deploy behind Nginx / reverse proxy
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Recommended in production
-CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Applications
-# -----------------------------------------------------------------------------
+# =============================================================================
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -59,10 +57,14 @@ INSTALLED_APPS = [
     "rest_framework",
     "captcha",
     "channels",
-
+    "django_extensions",
     "comments",
 ]
 
+
+# =============================================================================
+# Middleware
+# =============================================================================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -77,6 +79,10 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+
+# =============================================================================
+# URLs / Templates
+# =============================================================================
 ROOT_URLCONF = "core.urls"
 
 TEMPLATES = [
@@ -98,11 +104,10 @@ WSGI_APPLICATION = "core.wsgi.application"
 ASGI_APPLICATION = "core.asgi.application"
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Database
-# -----------------------------------------------------------------------------
-# Use PostgreSQL by default (Docker). Allow SQLite fallback for pure local runs.
-DB_ENGINE = os.getenv("DB_ENGINE", "postgres").strip().lower()
+# =============================================================================
+DB_ENGINE = os.getenv("DB_ENGINE", "postgres").lower()
 
 if DB_ENGINE == "sqlite":
     DATABASES = {
@@ -124,9 +129,9 @@ else:
     }
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Password validation
-# -----------------------------------------------------------------------------
+# =============================================================================
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -135,18 +140,18 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Internationalization
-# -----------------------------------------------------------------------------
+# =============================================================================
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "UTC")
 USE_I18N = True
 USE_TZ = True
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Static / Media
-# -----------------------------------------------------------------------------
+# =============================================================================
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -156,21 +161,18 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# -----------------------------------------------------------------------------
-# DRF (pagination 25 root comments per page)
-# -----------------------------------------------------------------------------
+# =============================================================================
+# Django REST Framework
+# =============================================================================
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": int(os.getenv("DRF_PAGE_SIZE", "25")),
 }
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # CORS / CSRF
-# -----------------------------------------------------------------------------
-# For local dev:
-# - http://localhost:5173
-# - http://127.0.0.1:5173
+# =============================================================================
 FRONTEND_ORIGINS = env_list(
     "FRONTEND_ORIGINS",
     "http://localhost:5173,http://127.0.0.1:5173",
@@ -179,49 +181,73 @@ FRONTEND_ORIGINS = env_list(
 CORS_ALLOWED_ORIGINS = FRONTEND_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
 
-# CSRF trusted origins must include scheme (http/https)
-CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", ",".join(FRONTEND_ORIGINS))
+CSRF_TRUSTED_ORIGINS = env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    ",".join(FRONTEND_ORIGINS),
+)
 
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # Channels (Redis)
-# -----------------------------------------------------------------------------
-CHANNEL_LAYER = os.getenv("CHANNEL_LAYER", "redis").strip().lower()
+# =============================================================================
+CHANNEL_LAYER = os.getenv("CHANNEL_LAYER", "redis").lower()
 
 if CHANNEL_LAYER == "inmemory":
     CHANNEL_LAYERS = {
-        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
     }
 else:
-    # NOTE: requires channels-redis in requirements.txt
-    REDIS_HOST = os.getenv("REDIS_HOST", "redis")
-    REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [(REDIS_HOST, REDIS_PORT)],
+                "hosts": [
+                    (
+                        os.getenv("REDIS_HOST", "redis"),
+                        int(os.getenv("REDIS_PORT", "6379")),
+                    )
+                ],
             },
         }
     }
 
 
-# -----------------------------------------------------------------------------
-# Security headers / best-practice defaults
-# -----------------------------------------------------------------------------
+# =============================================================================
+# Celery (RabbitMQ broker; Redis result backend)
+# =============================================================================
+CELERY_BROKER_URL = os.getenv(
+    "CELERY_BROKER_URL",
+    "amqp://guest:guest@rabbitmq:5672//",
+)
+
+CELERY_RESULT_BACKEND = os.getenv(
+    "CELERY_RESULT_BACKEND",
+    "redis://redis:6379/1",
+)
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = os.getenv("CELERY_TIMEZONE", "UTC")
+
+
+# =============================================================================
+# Security headers
+# =============================================================================
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 
-# In production enable these (via env) after HTTPS is configured:
 SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", "0")
 SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", "0")
 CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", "0")
 
 
-# -----------------------------------------------------------------------------
-# Logging (useful in Docker)
-# -----------------------------------------------------------------------------
+# =============================================================================
+# Logging (Docker-friendly)
+# =============================================================================
 LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
 
 LOGGING = {
@@ -230,5 +256,8 @@ LOGGING = {
     "handlers": {
         "console": {"class": "logging.StreamHandler"},
     },
-    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "root": {
+        "handlers": ["console"],
+        "level": LOG_LEVEL,
+    },
 }
