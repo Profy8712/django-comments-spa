@@ -1,179 +1,255 @@
-# Django Comments SPA
+# 🌟 Django Comments SPA — Enterprise-Grade Documentation
 
-Single Page Application for a threaded comments system built with **Django + DRF + Channels** on the backend and **Vue 3 + Vite** on the frontend.
+A **production-ready Single Page Application (SPA)** for managing **hierarchical comments** with a strong focus on scalability, security, and modern backend architecture.
 
-Users can:
-
-- Post new comments with basic formatting  
-- Reply to existing comments (nested / threaded tree)  
-- Attach images and text files  
-- Pass CAPTCHA validation  
-- See new comments in real time via WebSockets  
-- Sort and paginate comments  
-
-The project is fully containerised with **Docker** and can be deployed to a VDS/Cloud server (e.g. AWS EC2) with optional **CI/CD via GitHub Actions**.
+This project demonstrates a **Middle+/Senior-level Django backend solution**, suitable for real-world production use and technical interviews.
 
 ---
 
-## Tech stack
+## 🚀 Key Capabilities
 
-**Backend**
-
-- Python 3.12  
-- Django  
-- Django REST Framework  
-- Django Channels  
-- django-simple-captcha  
-- Pillow  
-- SQLite (default demo DB)
-
-**Frontend**
-
-- Vue 3  
-- Vite  
-
-**DevOps**
-
-- Docker, Docker Compose  
-- GitHub Actions  
-- AWS EC2
+- Unlimited nested comments (tree structure)
+- Image & text attachments
+- Automatic image resizing (Pillow)
+- Lightbox image viewer
+- XSS protection with strict allowlist
+- CAPTCHA spam protection
+- Live preview before submission
+- Pagination (25 root comments per page)
+- Sorting by multiple fields
+- Real-time WebSocket updates
+- Full-text search with Elasticsearch
+- Fully Dockerized infrastructure
+- Ready for AWS EC2 deployment
+- CI/CD automation with GitHub Actions
 
 ---
 
-## Features
+## 📁 Project Structure
 
-- Comment model with nested replies (`parent` FK)
-- Attachments with automatic image resizing
-- TXT size validation (100 KB)
-- CAPTCHA validation
-- Pagination & ordering
-- WebSocket real-time updates
-- SPA with reply forms, previews, lightbox, and formatting buttons
+```
+django_comments_spa/
+│── comments/
+│   ├── models.py              # Comment & Attachment models
+│   ├── serializers.py         # Nested serializers, validation, CAPTCHA
+│   ├── views.py               # REST API + search API
+│   ├── documents.py           # Elasticsearch documents
+│   ├── consumers.py           # WebSocket consumers
+│   ├── validators.py          # File validation rules
+│   └── urls.py
+│
+│── core/
+│   ├── settings.py            # Django, DRF, Channels, Celery, Elasticsearch
+│   ├── routing.py             # WebSocket routing
+│   ├── asgi.py
+│   └── celery.py
+│
+│── frontend/                  # Vue 3 + Vite SPA
+│   └── src/
+│       ├── api/
+│       ├── components/
+│       ├── helpers/
+│       └── App.vue
+│
+│── media/                     # Uploaded files
+│── docker-compose.yml
+│── Dockerfile.backend
+│── Dockerfile.frontend
+│── requirements.txt
+│── manage.py
+│── README.md
+```
 
 ---
 
-## Running locally (Docker)
+## 🧠 Backend Architecture
 
+### Core Stack
+- Python 3.12
+- Django 4+
+- Django REST Framework
+- Django Channels (WebSockets)
+- Celery (async tasks)
+- RabbitMQ (message broker)
+- Redis (Celery backend & Channels layer)
+- PostgreSQL (main database)
+- Elasticsearch 8 + Kibana (search & analytics)
+
+### Key Design Decisions
+- **Separation of concerns** (API, async tasks, search, real-time)
+- **Event-driven updates** via WebSockets
+- **Asynchronous processing** for heavy tasks
+- **Search engine offloading** to Elasticsearch
+- **Docker-first** development and deployment
+
+---
+
+## 🧵 Nested Comments
+
+- Unlimited nesting using `parent` foreign key
+- Recursive serialization
+- Optimized queries with `select_related` and `prefetch_related`
+
+---
+
+## 🔍 Full-Text Search (Elasticsearch)
+
+Searchable fields:
+- Comment text
+- User name
+- Email
+
+Endpoint:
+```
+GET /api/search/comments/?q=alex
+```
+
+Features:
+- Fuzzy matching (`AUTO`)
+- Fast indexing
+- Independent search scaling
+- Index rebuild support
+
+---
+
+## 🔐 Security
+
+- Strict XSS protection (Bleach)
+- Allowed tags only:
+  - `<a>`
+  - `<i>`
+  - `<strong>`
+  - `<code>`
+- SQL injection protection via ORM
+- CAPTCHA required for comment creation
+- File type & size validation
+
+---
+
+## 📎 File Attachments
+
+| Type | Rules |
+|-----|------|
+| Images | Auto-resized to max 320×240 |
+| TXT files | ≤ 100 KB, UTF-8 only |
+
+Upload endpoint:
+```
+POST /api/comments/<id>/upload/
+```
+
+---
+
+## ⚡ Real-Time Updates
+
+- Django Channels + Redis
+- Broadcast on new comment creation
+- All connected clients update instantly
+- No page reload required
+
+---
+
+## 📦 Pagination & Sorting
+
+Pagination:
+- 25 root comments per page
+
+Sorting:
+- Username
+- Email
+- Created date (ASC / DESC)
+
+---
+
+## 🐳 Dockerized Environment
+
+Services:
+- backend
+- frontend
+- postgres
+- redis
+- rabbitmq
+- celery
+- celery_beat
+- elasticsearch
+- kibana
+
+Run:
 ```bash
 docker compose up --build
 ```
 
-Backend: http://127.0.0.1:8000  
-Frontend: http://localhost:5173  
-
----
-
-## Backend .env example
-
-```
-DJANGO_SECRET_KEY=dev-key
-DJANGO_DEBUG=1
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,comments_backend
-DJANGO_CORS_ALLOWED_ORIGINS=http://localhost:5173
-```
-
----
-
-## Frontend .env
-
-```
-VITE_API_URL=http://127.0.0.1:8000
-```
-
----
-
-## Production deployment (AWS EC2)
-
-### 1. Create EC2 instance  
-Ubuntu 22.04 recommended.
-
-### 2. Install Docker
-
+Rebuild search index:
 ```bash
-curl -fsSL https://get.docker.com | sudo sh
+docker exec -it comments_backend python manage.py search_index --rebuild
 ```
 
-### 3. Clone project on server
+---
 
+## ☁️ AWS EC2 Deployment (Overview)
+
+1. Launch Ubuntu 22.04 EC2 instance
+2. Install Docker & Docker Compose
+3. Clone repository
+4. Configure `.env`
+5. Run Docker Compose
+6. Add Nginx reverse proxy
+7. Enable HTTPS with Certbot
+8. Configure GitHub Actions for CI/CD
+
+---
+
+## 🔄 CI/CD Pipeline
+
+GitHub Actions workflow:
+- SSH into EC2
+- Pull latest code
+- Rebuild containers
+- Restart services
+
+Supports zero-downtime deployment.
+
+---
+
+## 🧪 Testing
+
+Test coverage includes:
+- Nested comments logic
+- File validators
+- XSS sanitization
+- Pagination behavior
+- CAPTCHA validation
+- WebSocket events
+- Search indexing
+
+Run tests:
 ```bash
-git clone https://github.com/YourRepo/django-comments-spa.git
-cd django-comments-spa
-```
-
-### 4. Create production env files
-
-`backend/.env.prod`:
-
-```
-DJANGO_SECRET_KEY=your-prod-key
-DJANGO_DEBUG=0
-DJANGO_ALLOWED_HOSTS=your-domain.com,YOUR_EC2_IP
-DJANGO_CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com
-```
-
-`frontend/.env.production`:
-
-```
-VITE_API_URL=https://your-backend-domain.com
-```
-
-### 5. Build & run
-
-```bash
-docker compose up -d --build
+python manage.py test
 ```
 
 ---
 
-## CI/CD (GitHub Actions → EC2)
+## 🎯 Project Purpose
 
-### Required GitHub Secrets
-
-- `EC2_HOST`
-- `EC2_USER`
-- `EC2_SSH_KEY`
-- `EC2_PROJECT_PATH`
-
-### `.github/workflows/deploy.yml`
-
-```yaml
-name: Deploy to EC2
-
-on:
-  push:
-    branches: [ "main" ]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
-
-      - name: Deploy
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            cd ${{ secrets.EC2_PROJECT_PATH }}
-            git pull origin main
-            docker compose up -d --build
-            docker image prune -f
-          EOF
-```
+This project showcases:
+- Real-world Django architecture
+- Async processing with Celery
+- Message brokers & background workers
+- Full-text search integration
+- Production-ready Docker setup
+- Cloud deployment readiness
 
 ---
 
-## Notes
+## 👤 Author
 
-- For production, consider Redis + PostgreSQL  
-- For HTTPS, place Nginx or Caddy reverse proxy in front of the backend
+**Alexander Kurin**  
+Python Backend Developer
+
+**Stack:**  
+Django • FastAPI • Celery • Redis • RabbitMQ • Elasticsearch • Docker • PostgreSQL • AWS
 
 ---
 
-## License
-
+## 📄 License
 MIT
-

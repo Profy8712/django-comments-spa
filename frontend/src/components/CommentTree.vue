@@ -13,7 +13,7 @@
 
       <div
         class="comment-text"
-        v-html="comment.text"
+        v-html="renderText(comment.text)"
       ></div>
 
       <div
@@ -21,24 +21,24 @@
         class="attachments"
       >
         <div
-          v-for="attachment in comment.attachments"
-          :key="attachment.id"
+          v-for="a in comment.attachments"
+          :key="a.id"
           class="attachment-item"
         >
           <!-- image preview with lightbox -->
           <img
-            v-if="isImageAttachment(attachment)"
+            v-if="isImageAttachment(a)"
             class="attachment-thumb"
-            :src="resolveFileUrl(attachment.file)"
+            :src="resolveFileUrl(a.file)"
             alt="Attachment image"
-            @click="openLightbox(resolveFileUrl(attachment.file))"
+            @click="openLightbox(resolveFileUrl(a.file))"
           />
 
           <!-- non-image file -->
           <a
             v-else
             class="attachment-link"
-            :href="resolveFileUrl(attachment.file)"
+            :href="resolveFileUrl(a.file)"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -56,18 +56,13 @@
       </button>
 
       <div v-if="replyTo === comment.id" class="reply-form">
-        <!-- important: pass parent-id so the reply is linked as a child -->
-        <CommentForm
-          :parent-id="comment.id"
-          @created="handleCreated"
-        />
+        <CommentForm @created="handleCreated" />
       </div>
 
       <div
         v-if="comment.children && comment.children.length"
         class="children"
       >
-        <!-- recursive rendering of nested comments -->
         <CommentTree
           :comments="comment.children"
           @changed="handleCreated"
@@ -101,6 +96,7 @@
 <script>
 import CommentForm from "./CommentForm.vue";
 import { BACKEND_URL } from "../api";
+import { renderSafeHtml } from "../helpers/render";
 
 export default {
   name: "CommentTree",
@@ -128,11 +124,12 @@ export default {
     toggleReply(id) {
       this.replyTo = this.replyTo === id ? null : id;
     },
-    async handleCreated() {
-      // after a reply is created, close the reply form
-      // and notify the parent to reload comments
+    handleCreated() {
       this.replyTo = null;
       this.$emit("changed");
+    },
+    renderText(text) {
+      return renderSafeHtml(text || "");
     },
     resolveFileUrl(file) {
       if (!file) return "";

@@ -1,4 +1,3 @@
-# comments/consumers.py
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
@@ -17,36 +16,32 @@ class CommentsConsumer(AsyncJsonWebsocketConsumer):
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive_json(self, content, **kwargs):
-        """
-        We do not expect messages from client right now,
-        so this can stay empty or be used for debug.
-        """
+        # Client -> server messages are not required now
         return
 
     async def comment_created(self, event):
         """
-        Called from CommentListCreateView.perform_create via channel_layer.group_send.
         event = {"type": "comment_created", "comment_id": <int>}
         """
         comment_id = event.get("comment_id")
-        if comment_id is None:
+        if not comment_id:
             return
 
-        # All ORM and serializer work must run in a sync thread
         data = await self._get_serialized_comment(comment_id)
+        if data is None:
+            return
 
-        await self.send_json(
-            {
-                "type": "comment_created",
-                "payload": data,
-            }
-        )
+        await self.send_json({"type": "comment_created", "payload": data})
 
     @sync_to_async
-    def _get_serialized_comment(self, comment_id: int) -> dict:
-        comment = (
-            Comment.objects.select_related("parent")
-            .prefetch_related("attachments")
-            .get(pk=comment_id)
-        )
+    def _get_serialized_comment(self, comment_id: int):
+        try:
+            comment = (
+                Comment.objects.select_related("parent")
+                .prefetch_related("attachments", "children")
+                .get(pk=comment_id)
+            )
+        except Comment.DoesNotExist:
+            return None
+
         return CommentSerializer(comment).data

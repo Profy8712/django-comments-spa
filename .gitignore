@@ -61,3 +61,5 @@ test-results/
 *.swp
 # Created by venv; see https://docs.python.org/3/library/venv.html
 venv/Lib
+db.sqlite3
+NUL

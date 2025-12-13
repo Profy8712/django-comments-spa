@@ -27,9 +27,34 @@
       </div>
 
       <div v-else>
+        <!-- Root comments table -->
+        <table
+          v-if="currentComments.length"
+          class="comments-table"
+        >
+          <thead>
+            <tr>
+              <th>User Name</th>
+              <th>Email</th>
+              <th>Created at</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="comment in currentComments"
+              :key="comment.id"
+            >
+              <td>{{ comment.user_name }}</td>
+              <td>{{ comment.email }}</td>
+              <td>{{ formatDate(comment.created_at) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Nested tree view -->
         <CommentTree
-          v-if="rootComments.length"
-          :comments="rootComments"
+          v-if="currentComments.length"
+          :comments="currentComments"
           @changed="loadComments"
         />
 
@@ -86,13 +111,6 @@ export default {
       if (!this.comments) return [];
       return this.comments.results || this.comments;
     },
-    // show only root comments at the top level;
-    // nested replies are rendered from comment.children in CommentTree
-    rootComments() {
-      return this.currentComments.filter(
-        (comment) => comment.parent === null || comment.parent === undefined
-      );
-    },
   },
   methods: {
     async loadComments() {
@@ -122,6 +140,11 @@ export default {
       // Simply reload comments for the active page.
       await this.loadComments();
     },
+    formatDate(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      return date.toLocaleString();
+    },
     setupWebSocket() {
       const protocol = window.location.protocol === "https:" ? "wss" : "ws";
       const wsUrl = `${protocol}://127.0.0.1:8000/ws/comments/`;
@@ -137,7 +160,7 @@ export default {
           const data = JSON.parse(event.data);
 
           if (data.type === "comment_created") {
-            // Refresh the current page when a new comment is created.
+            // Do not reset the page; just refresh the current one.
             await this.loadComments();
           }
         } catch (e) {
@@ -193,5 +216,29 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* Root comments table */
+
+.comments-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.comments-table th,
+.comments-table td {
+  border: 1px solid #e5e7eb;
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+}
+
+.comments-table thead {
+  background-color: #f3f4f6;
+}
+
+.comments-table th {
+  font-weight: 600;
 }
 </style>

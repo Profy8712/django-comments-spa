@@ -1,21 +1,40 @@
+import os
 from pathlib import Path
+from typing import List
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-o!en%r8d&lwpec85_)-2)t(3@tbh$a_ab383+&z(_$zh2k7b^e"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+def env(name: str, default: str | None = None) -> str:
+    value = os.getenv(name, default)
+    if value is None:
+        raise RuntimeError(f"Missing required environment variable: {name}")
+    return value
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "comments_backend",
-    "comments_frontend",
-]
 
-# Application definition
+def env_bool(name: str, default: str = "0") -> bool:
+    return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name: str, default: str = "") -> List[str]:
+    value = os.getenv(name, default) or ""
+    return [x.strip() for x in value.split(",") if x.strip()]
+
+
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-env")
+DEBUG = env_bool("DJANGO_DEBUG", "1")
+
+ALLOWED_HOSTS = env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    "localhost,127.0.0.1,comments_backend,comments_frontend",
+)
+
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
+
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -25,18 +44,23 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
+    "corsheaders",
     "rest_framework",
-    "comments",
     "captcha",
     "channels",
-    "corsheaders",          # <─ для CORS
+    "django_extensions",
+
+    "django_elasticsearch_dsl",
+
+    "comments",
 ]
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
 
-    "corsheaders.middleware.CorsMiddleware",  # <─ CORS перед CommonMiddleware
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
 
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -44,6 +68,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
 
 ROOT_URLCONF = "core.urls"
 
@@ -59,75 +84,144 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
             ],
         },
-    },
+    }
 ]
 
 WSGI_APPLICATION = "core.wsgi.application"
 ASGI_APPLICATION = "core.asgi.application"
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+DB_ENGINE = os.getenv("DB_ENGINE", "postgres").lower()
+
+if DB_ENGINE == "sqlite":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("POSTGRES_DB", "comments_db"),
+            "USER": os.getenv("POSTGRES_USER", "comments_user"),
+            "PASSWORD": os.getenv("POSTGRES_PASSWORD", "comments_pass"),
+            "HOST": os.getenv("POSTGRES_HOST", "db"),
+            "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        }
+    }
 
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "UTC"
+TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "UTC")
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"  # для collectstatic в докере
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Channels
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    }
+
+REST_FRAMEWORK = {
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": int(os.getenv("DRF_PAGE_SIZE", "25")),
 }
 
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+FRONTEND_ORIGINS = env_list(
+    "FRONTEND_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173",
+)
 
+CORS_ALLOWED_ORIGINS = FRONTEND_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
 
+CSRF_TRUSTED_ORIGINS = env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    ",".join(FRONTEND_ORIGINS),
+)
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-]
+
+CHANNEL_LAYER = os.getenv("CHANNEL_LAYER", "redis").lower()
+
+if CHANNEL_LAYER == "inmemory":
+    CHANNEL_LAYERS = {
+        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [
+                    (
+                        os.getenv("REDIS_HOST", "redis"),
+                        int(os.getenv("REDIS_PORT", "6379")),
+                    )
+                ],
+            },
+        }
+    }
+
+
+CELERY_BROKER_URL = os.getenv(
+    "CELERY_BROKER_URL",
+    "amqp://guest:guest@rabbitmq:5672//",
+)
+
+CELERY_RESULT_BACKEND = os.getenv(
+    "CELERY_RESULT_BACKEND",
+    "redis://redis:6379/1",
+)
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = os.getenv("CELERY_TIMEZONE", "UTC")
+
+
+# =============================================================================
+# Elasticsearch
+# =============================================================================
+ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
+
+ELASTICSEARCH_DSL = {
+    "default": {
+        "hosts": ELASTICSEARCH_HOST,
+    }
+}
+
+ELASTICSEARCH_DSL_AUTOSYNC = env_bool("ELASTICSEARCH_DSL_AUTOSYNC", "1")
+
+
+X_FRAME_OPTIONS = "DENY"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
+
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", "0")
+SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", "0")
+CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", "0")
+
+
+LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+}

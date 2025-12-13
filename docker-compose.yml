@@ -1,20 +1,172 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: comments_db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-comments_db}
+      POSTGRES_USER: ${POSTGRES_USER:-comments_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-comments_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-comments_user} -d ${POSTGRES_DB:-comments_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: comments_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: comments_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    ports:
+      - "${RABBITMQ_UI_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: comments_elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "${ES_PORT:-9200}:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    container_name: comments_kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     container_name: comments_backend
-    ports:
-      - "8000:8000"
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     volumes:
       - .:/app
+      - ./media:/app/media
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    command: >
+      sh -c "
+      python manage.py migrate &&
+      python manage.py collectstatic --noinput || true &&
+      daphne -b 0.0.0.0 -p 8000 core.asgi:application
+      "
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: comments_celery
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      backend:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./media:/app/media
+    command: >
+      sh -c "
+      celery -A core worker -l info
+      "
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: comments_celery_beat
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      backend:
+        condition: service_started
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: >
+      sh -c "
+      celery -A core beat -l info
+      "
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: comments_frontend
-    ports:
-      - "5173:5173"
+    restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+
+volumes:
+  postgres_data:
+  elasticsearch_data:
