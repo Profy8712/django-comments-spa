@@ -1,383 +1,255 @@
+# 🌟 Django Comments SPA — Enterprise-Grade Documentation
 
-# 🌟 Django Comments SPA — Full Professional Documentation
+A **production-ready Single Page Application (SPA)** for managing **hierarchical comments** with a strong focus on scalability, security, and modern backend architecture.
 
-A production-ready Single Page Application (SPA) for managing **hierarchical comments**, complete with:
-✔ Unlimited nested replies  
-✔ Image & text attachments  
-✔ Image auto‑resize  
-✔ Lightbox viewer  
-✔ XSS filtering + allowed safe HTML  
-✔ CAPTCHA verification  
-✔ Preview before submit  
-✔ Pagination (25 per page)  
-✔ Sorting by multiple fields  
-✔ WebSocket real‑time updates  
-✔ Dockerized full-stack environment  
-✔ AWS EC2 deployment guide  
-✔ CI/CD automation (GitHub Actions)  
-
-This README is a **full, comprehensive, enterprise‑grade version** suitable for GitHub, portfolio, and production teams.
+This project demonstrates a **Middle+/Senior-level Django backend solution**, suitable for real-world production use and technical interviews.
 
 ---
 
-# 📁 Project Structure (Repository Layout)
+## 🚀 Key Capabilities
+
+- Unlimited nested comments (tree structure)
+- Image & text attachments
+- Automatic image resizing (Pillow)
+- Lightbox image viewer
+- XSS protection with strict allowlist
+- CAPTCHA spam protection
+- Live preview before submission
+- Pagination (25 root comments per page)
+- Sorting by multiple fields
+- Real-time WebSocket updates
+- Full-text search with Elasticsearch
+- Fully Dockerized infrastructure
+- Ready for AWS EC2 deployment
+- CI/CD automation with GitHub Actions
+
+---
+
+## 📁 Project Structure
 
 ```
 django_comments_spa/
-│── comments/                 # Django app: comments logic, attachments, validation, sanitizing
-│     ├── models.py           # Comment + Attachment models
-│     ├── serializers.py      # API serializers with nested children
-│     ├── views.py            # List/Create API, attachment upload
-│     ├── consumers.py        # WebSocket consumer for live updates
-│     ├── utils/
-│     │     └── sanitize.py   # HTML sanitizing rules
-│     ├── validators.py       # File size/type validators
-│     └── urls.py
+│── comments/
+│   ├── models.py              # Comment & Attachment models
+│   ├── serializers.py         # Nested serializers, validation, CAPTCHA
+│   ├── views.py               # REST API + search API
+│   ├── documents.py           # Elasticsearch documents
+│   ├── consumers.py           # WebSocket consumers
+│   ├── validators.py          # File validation rules
+│   └── urls.py
 │
-│── core/                      # Django project configuration
-│     ├── settings.py          # DRF, Channels, CORS, XSS, pagination
-│     ├── routing.py           # WebSocket routing
-│     └── asgi.py
+│── core/
+│   ├── settings.py            # Django, DRF, Channels, Celery, Elasticsearch
+│   ├── routing.py             # WebSocket routing
+│   ├── asgi.py
+│   └── celery.py
 │
 │── frontend/                  # Vue 3 + Vite SPA
-│     ├── public/
-│     └── src/
-│          ├── api/            # API clients
-│          ├── components/     # All Vue components
-│          ├── helpers/        # Sanitizer, preview parser
-│          └── App.vue         # Main SPA
+│   └── src/
+│       ├── api/
+│       ├── components/
+│       ├── helpers/
+│       └── App.vue
 │
-│── media/                     # Uploaded attachments
+│── media/                     # Uploaded files
 │── docker-compose.yml
 │── Dockerfile.backend
 │── Dockerfile.frontend
 │── requirements.txt
 │── manage.py
-│── README.md (this file)
+│── README.md
 ```
 
 ---
 
-# 🎯 Core Features — Explained in Detail
+## 🧠 Backend Architecture
 
-## 1️⃣ Nested Comments (Unlimited Depth)
+### Core Stack
+- Python 3.12
+- Django 4+
+- Django REST Framework
+- Django Channels (WebSockets)
+- Celery (async tasks)
+- RabbitMQ (message broker)
+- Redis (Celery backend & Channels layer)
+- PostgreSQL (main database)
+- Elasticsearch 8 + Kibana (search & analytics)
 
-- Each comment can have **any number of replies**.
-- Replies are displayed as an expanding **tree structure**.
-- Backend returns nested structure via recursive serializer:
-```
-children: [ ... ]
-```
-
-## 2️⃣ Sorting (Root Comments Only)
-
-Sort options on frontend:
-
-- Username A→Z / Z→A  
-- Email A→Z / Z→A  
-- Created date (oldest first)  
-- Created date (newest first — **default LIFO**)  
-
-Backend supports ordering via:
-```
-/api/comments/?ordering=-created_at
-```
-
-## 3️⃣ Pagination — 25 Comments Per Page
-
-Django REST Framework config:
-```
-REST_FRAMEWORK = {
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 25,
-}
-```
-Frontend displays:
-- Page number  
-- Next/Prev buttons  
-- Keeps page state even after new comment appears  
-
-## 4️⃣ File Attachments
-
-### Allowed types:
-| Type | Limit | Notes |
-|------|--------|-------|
-| JPG / PNG / GIF | Auto resized to **max 320×240** | Uses Pillow |
-| TXT | ≤ 100 KB | UTF‑8 only |
-
-Uploader:
-```
-POST /api/comments/<comment_id>/upload/
-```
-
-## 5️⃣ Image Lightbox Viewer
-- Clicking an image opens it in full preview  
-- Supports mobile gestures  
-- Disabled for TXT files  
-
-## 6️⃣ HTML Safe Tags (Pseudo-Markup)
-
-User is allowed to input ONLY:
-```
-<a href="" title=""></a>
-<i></i>
-<strong></strong>
-<code></code>
-```
-
-Sanitized using **bleach**:
-- Removes unsafe attributes  
-- Rejects JavaScript in links  
-- Ensures valid XHTML closure  
-
-## 7️⃣ Preview Before Submit
-- User can see comment rendering before sending  
-- Sanitized preview (safe HTML only)  
-
-## 8️⃣ CAPTCHA (Spam Protection)
-Uses `django-simple-captcha`:
-- Key + value pair required for comment creation  
-- Throttles bots  
-
-## 9️⃣ Real-Time Updates (WebSockets)
-Powered by **Django Channels + Redis**:
-- When a comment is created, backend sends:
-```
-{ "type": "comment_created" }
-```
-- All connected clients auto-refresh the current page  
+### Key Design Decisions
+- **Separation of concerns** (API, async tasks, search, real-time)
+- **Event-driven updates** via WebSockets
+- **Asynchronous processing** for heavy tasks
+- **Search engine offloading** to Elasticsearch
+- **Docker-first** development and deployment
 
 ---
 
-# 🧠 Backend Architecture
+## 🧵 Nested Comments
 
-### Technologies
-- Django 4  
-- Django REST Framework  
-- Django Channels  
-- Redis  
-- Pillow  
-- Bleach  
-- SimpleCaptcha  
-
-### Key Components
-
-#### Comments API
-- List root comments with pagination  
-- Return nested children  
-- Create comment  
-- Upload attachments  
-
-#### Comments Serializer
-```
-class CommentSerializer:
-    children = RecursiveSerializer(many=True)
-```
-
-#### XSS Filter
-```
-allowed_tags = ["a", "i", "strong", "code"]
-```
-
-#### Image Resizer
-- Auto scales any large image to fit 320×240  
+- Unlimited nesting using `parent` foreign key
+- Recursive serialization
+- Optimized queries with `select_related` and `prefetch_related`
 
 ---
 
-# 🎨 Frontend Architecture (Vue 3 + Vite)
+## 🔍 Full-Text Search (Elasticsearch)
 
-### UI Components
-| Component | Meaning |
-|----------|---------|
-| `App.vue` | Root SPA |
-| `CommentForm.vue` | Comment creation form |
-| `CommentItem.vue` | Single comment block |
-| `CommentTree.vue` | Recursive renderer |
-| `Preview.vue` | Preview window |
-| `Lightbox.vue` | Image preview |
+Searchable fields:
+- Comment text
+- User name
+- Email
 
-### Features Implemented
-- State-preserving pagination  
-- Dynamic sorting  
-- File upload UI  
-- HTML markup buttons `[i] [strong] [code] [a]`  
-- Lightbox viewer  
-- WebSocket auto-refresh  
-- CAPTCHA rendering  
+Endpoint:
+```
+GET /api/search/comments/?q=alex
+```
+
+Features:
+- Fuzzy matching (`AUTO`)
+- Fast indexing
+- Independent search scaling
+- Index rebuild support
 
 ---
 
-# 🐳 Running Project with Docker
+## 🔐 Security
 
-### Build & Run
+- Strict XSS protection (Bleach)
+- Allowed tags only:
+  - `<a>`
+  - `<i>`
+  - `<strong>`
+  - `<code>`
+- SQL injection protection via ORM
+- CAPTCHA required for comment creation
+- File type & size validation
+
+---
+
+## 📎 File Attachments
+
+| Type | Rules |
+|-----|------|
+| Images | Auto-resized to max 320×240 |
+| TXT files | ≤ 100 KB, UTF-8 only |
+
+Upload endpoint:
 ```
+POST /api/comments/<id>/upload/
+```
+
+---
+
+## ⚡ Real-Time Updates
+
+- Django Channels + Redis
+- Broadcast on new comment creation
+- All connected clients update instantly
+- No page reload required
+
+---
+
+## 📦 Pagination & Sorting
+
+Pagination:
+- 25 root comments per page
+
+Sorting:
+- Username
+- Email
+- Created date (ASC / DESC)
+
+---
+
+## 🐳 Dockerized Environment
+
+Services:
+- backend
+- frontend
+- postgres
+- redis
+- rabbitmq
+- celery
+- celery_beat
+- elasticsearch
+- kibana
+
+Run:
+```bash
 docker compose up --build
 ```
 
-### Services
-Backend → `http://localhost:8000`  
-Frontend → `http://localhost:5173`  
-
-### Create superuser
-```
-docker exec -it comments_backend python manage.py createsuperuser
+Rebuild search index:
+```bash
+docker exec -it comments_backend python manage.py search_index --rebuild
 ```
 
 ---
 
-# 🌐 API Endpoints (Full)
+## ☁️ AWS EC2 Deployment (Overview)
 
-## GET /api/comments/
-List paginated root comments:
-```
-{
-  "count": 120,
-  "next": "...",
-  "previous": null,
-  "results": [
-      {
-        "id": 1,
-        "user_name": "...",
-        "children": [...]
-      }
-  ]
-}
-```
-
-## POST /api/comments/
-Create a comment:
-```
-{
-  "user_name": "alex",
-  "email": "alex@gmail.com",
-  "text": "Hello",
-  "parent": null,
-  "captcha_key": "...",
-  "captcha_value": "..."
-}
-```
-
-## POST /api/comments/<id>/upload/
-Attach file.
+1. Launch Ubuntu 22.04 EC2 instance
+2. Install Docker & Docker Compose
+3. Clone repository
+4. Configure `.env`
+5. Run Docker Compose
+6. Add Nginx reverse proxy
+7. Enable HTTPS with Certbot
+8. Configure GitHub Actions for CI/CD
 
 ---
 
-# 🔧 Local Development Without Docker
+## 🔄 CI/CD Pipeline
 
-### Backend
-```
-cd django_comments_spa
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python manage.py runserver
-```
+GitHub Actions workflow:
+- SSH into EC2
+- Pull latest code
+- Rebuild containers
+- Restart services
 
-### Frontend
-```
-cd frontend
-npm install
-npm run dev
-```
+Supports zero-downtime deployment.
 
 ---
 
-# ☁️ Deploying to AWS EC2
+## 🧪 Testing
 
-## 1. Launch EC2 instance
-Ubuntu 22.04  
-Open ports:
-- 80, 443  
-- 8000  
-- 5173  
-- 22  
+Test coverage includes:
+- Nested comments logic
+- File validators
+- XSS sanitization
+- Pagination behavior
+- CAPTCHA validation
+- WebSocket events
+- Search indexing
 
-## 2. Install Docker & Compose
-```
-sudo apt update
-sudo apt install docker.io docker-compose -y
-```
-
-## 3. Clone project
-```
-git clone https://github.com/<your-repo>/django-comments-spa.git
-cd django-comments-spa
-```
-
-## 4. Run production stack
-```
-docker compose up -d --build
-```
-
-## 5. Configure Nginx reverse proxy  
-Routes example:
-- `/api` → Django backend  
-- `/ws` → Channels  
-- `/` → Vue SPA build  
-
-## 6. Enable HTTPS
-```
-sudo certbot --nginx
-```
-
----
-
-# 🔄 CI/CD With GitHub Actions
-
-### `.github/workflows/deploy.yml`
-Pipeline includes:
-- SSH to EC2  
-- Pull latest repo version  
-- Rebuild containers  
-- Restart services  
-
-Supports **zero‑downtime deploy**.
-
----
-
-# 🧪 Testing
-
-```
+Run tests:
+```bash
 python manage.py test
 ```
 
-Covers:
-- Recursive structure integrity  
-- File validators  
-- XSS sanitizing  
-- Pagination behavior  
-- CAPTCHA flow  
-- WebSocket events  
+---
+
+## 🎯 Project Purpose
+
+This project showcases:
+- Real-world Django architecture
+- Async processing with Celery
+- Message brokers & background workers
+- Full-text search integration
+- Production-ready Docker setup
+- Cloud deployment readiness
 
 ---
 
-# 📌 Requirements Checklist (All Completed)
+## 👤 Author
 
-| Requirement | Status |
-|------------|--------|
-| Unlimited nested comments | ✅ |
-| Sorting root comments | ✅ |
-| Pagination = 25/page | ✅ |
-| XSS protection | ✅ |
-| SQL injection protection | ✅ |
-| Allowed HTML tags | ✅ |
-| File validation + auto-resizing | ✅ |
-| Lightbox effect | ✅ |
-| CAPTCHA | ✅ |
-| AJAX / SPA (no reloads) | ✅ |
-| Preview before submit | ✅ |
-| WebSockets real-time update | ✅ |
-| Docker support | ✅ |
-| AWS deployment | ✅ |
-| CI/CD pipeline | ✅ |
+**Alexander Kurin**  
+Python Backend Developer
+
+**Stack:**  
+Django • FastAPI • Celery • Redis • RabbitMQ • Elasticsearch • Docker • PostgreSQL • AWS
 
 ---
 
-# 🏁 Final Notes
-This project is **fully production-ready**, with correct architecture, security, UI/UX, and deployment.
-
-If you'd like, I can also generate:
-
-✅ A **PDF** of this README  
-✅ A **diagram (PNG/SVG)** of system architecture  
-✅ A **fancy GitHub-styled README with badges**  
+## 📄 License
+MIT

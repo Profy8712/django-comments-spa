@@ -5,9 +5,6 @@ from typing import List
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# =============================================================================
-# Helpers
-# =============================================================================
 def env(name: str, default: str | None = None) -> str:
     value = os.getenv(name, default)
     if value is None:
@@ -24,9 +21,6 @@ def env_list(name: str, default: str = "") -> List[str]:
     return [x.strip() for x in value.split(",") if x.strip()]
 
 
-# =============================================================================
-# Security
-# =============================================================================
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-env")
 DEBUG = env_bool("DJANGO_DEBUG", "1")
 
@@ -42,9 +36,6 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 
 
-# =============================================================================
-# Applications
-# =============================================================================
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -58,18 +49,17 @@ INSTALLED_APPS = [
     "captcha",
     "channels",
     "django_extensions",
+
+    "django_elasticsearch_dsl",
+
     "comments",
 ]
 
 
-# =============================================================================
-# Middleware
-# =============================================================================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
 
-    # CORS must be before CommonMiddleware
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
 
@@ -80,9 +70,6 @@ MIDDLEWARE = [
 ]
 
 
-# =============================================================================
-# URLs / Templates
-# =============================================================================
 ROOT_URLCONF = "core.urls"
 
 TEMPLATES = [
@@ -104,9 +91,6 @@ WSGI_APPLICATION = "core.wsgi.application"
 ASGI_APPLICATION = "core.asgi.application"
 
 
-# =============================================================================
-# Database
-# =============================================================================
 DB_ENGINE = os.getenv("DB_ENGINE", "postgres").lower()
 
 if DB_ENGINE == "sqlite":
@@ -129,9 +113,6 @@ else:
     }
 
 
-# =============================================================================
-# Password validation
-# =============================================================================
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -140,18 +121,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# =============================================================================
-# Internationalization
-# =============================================================================
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "UTC")
 USE_I18N = True
 USE_TZ = True
 
 
-# =============================================================================
-# Static / Media
-# =============================================================================
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -161,18 +136,12 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# =============================================================================
-# Django REST Framework
-# =============================================================================
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": int(os.getenv("DRF_PAGE_SIZE", "25")),
 }
 
 
-# =============================================================================
-# CORS / CSRF
-# =============================================================================
 FRONTEND_ORIGINS = env_list(
     "FRONTEND_ORIGINS",
     "http://localhost:5173,http://127.0.0.1:5173",
@@ -187,16 +156,11 @@ CSRF_TRUSTED_ORIGINS = env_list(
 )
 
 
-# =============================================================================
-# Channels (Redis)
-# =============================================================================
 CHANNEL_LAYER = os.getenv("CHANNEL_LAYER", "redis").lower()
 
 if CHANNEL_LAYER == "inmemory":
     CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer",
-        }
+        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
     }
 else:
     CHANNEL_LAYERS = {
@@ -214,9 +178,6 @@ else:
     }
 
 
-# =============================================================================
-# Celery (RabbitMQ broker; Redis result backend)
-# =============================================================================
 CELERY_BROKER_URL = os.getenv(
     "CELERY_BROKER_URL",
     "amqp://guest:guest@rabbitmq:5672//",
@@ -234,8 +195,19 @@ CELERY_TIMEZONE = os.getenv("CELERY_TIMEZONE", "UTC")
 
 
 # =============================================================================
-# Security headers
+# Elasticsearch
 # =============================================================================
+ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
+
+ELASTICSEARCH_DSL = {
+    "default": {
+        "hosts": ELASTICSEARCH_HOST,
+    }
+}
+
+ELASTICSEARCH_DSL_AUTOSYNC = env_bool("ELASTICSEARCH_DSL_AUTOSYNC", "1")
+
+
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
@@ -245,19 +217,11 @@ SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", "0")
 CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", "0")
 
 
-# =============================================================================
-# Logging (Docker-friendly)
-# =============================================================================
 LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {
-        "console": {"class": "logging.StreamHandler"},
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": LOG_LEVEL,
-    },
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
 }

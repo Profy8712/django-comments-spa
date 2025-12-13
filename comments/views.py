@@ -1,41 +1,32 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 
-from rest_framework import generics, filters, parsers, status
+from rest_framework import filters, generics, parsers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Comment, Attachment
+from .documents import CommentDocument
+from .models import Comment
 from .serializers import (
-    CommentSerializer,
-    AttachmentSerializer,
     AttachmentCreateSerializer,
+    AttachmentSerializer,
+    CommentSearchResultSerializer,
+    CommentSerializer,
 )
 
 
 class CommentListCreateView(generics.ListCreateAPIView):
-    """
-    List root comments (with nested children) or create a new comment.
-    """
-
     serializer_class = CommentSerializer
-
-    # Sorting options for root comments
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["user_name", "email", "created_at"]
-    ordering = ["-created_at"]  # default LIFO
+    ordering = ["-created_at"]
 
     def get_queryset(self):
-        """
-        Return only root comments (those without a parent),
-        with related data preloaded to render the nested tree efficiently.
-        """
         return (
             Comment.objects.filter(parent__isnull=True)
-            .select_related()
+            .select_related("parent")
             .prefetch_related(
                 "attachments",
                 "children",
@@ -46,38 +37,27 @@ class CommentListCreateView(generics.ListCreateAPIView):
         )
 
     def perform_create(self, serializer):
-        """
-        Save a new comment and notify all WebSocket subscribers.
-        """
         comment = serializer.save()
 
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             "comments",
-            {
-                "type": "comment_created",
-                "comment_id": comment.id,
-            },
+            {"type": "comment_created", "comment_id": comment.id},
         )
 
 
 class CommentDetailView(generics.RetrieveAPIView):
-    """
-    Retrieve a single comment (with attachments and children).
-    """
-
-    queryset = Comment.objects.all()
+    queryset = Comment.objects.all().prefetch_related(
+        "attachments",
+        "children",
+        "children__attachments",
+        "children__children",
+        "children__children__attachments",
+    )
     serializer_class = CommentSerializer
 
 
 class CaptchaAPIView(APIView):
-    """
-    JSON API for SPA – returns CAPTCHA key and image URL.
-
-    GET /api/captcha/
-    -> { "key": "<hash>", "image": "/captcha/image/<hash>/" }
-    """
-
     authentication_classes = []
     permission_classes = []
 
@@ -88,12 +68,6 @@ class CaptchaAPIView(APIView):
 
 
 class AttachmentUploadView(generics.CreateAPIView):
-    """
-    Upload a single attachment for an existing comment.
-
-    POST /api/comments/<pk>/upload/
-    """
-
     serializer_class = AttachmentCreateSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
 
@@ -103,10 +77,7 @@ class AttachmentUploadView(generics.CreateAPIView):
         try:
             comment = Comment.objects.get(pk=comment_id)
         except Comment.DoesNotExist:
-            return Response(
-                {"detail": "Comment not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return Response({"detail": "Comment not found"}, status=status.HTTP_404_NOT_FOUND)
 
         data = request.data.copy()
         data["comment"] = comment.id
@@ -115,6 +86,44 @@ class AttachmentUploadView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
 
-        # serialize created attachment for response
-        response_data = AttachmentSerializer(instance).data
-        return Response(response_data, status=status.HTTP_201_CREATED)
+        return Response(AttachmentSerializer(instance).data, status=status.HTTP_201_CREATED)
+
+
+class CommentSearchAPIView(APIView):
+    serializer_class = CommentSearchResultSerializer
+
+    def get(self, request, *args, **kwargs):
+        q = (request.query_params.get("q") or "").strip()
+        if not q:
+            return Response({"detail": "Query param 'q' is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        search = (
+            CommentDocument.search()
+            .query(
+                "multi_match",
+                query=q,
+                fields=["text", "user_name", "email"],
+                fuzziness="AUTO",
+            )
+            .extra(track_total_hits=True)[:50]
+        )
+
+        res = search.execute()
+
+        items = []
+        for hit in res:
+            items.append(
+                {
+                    "id": int(hit.id),
+                    "user_name": getattr(hit, "user_name", None),
+                    "email": getattr(hit, "email", None),
+                    "text": getattr(hit, "text", None),
+                    "created_at": getattr(hit, "created_at", None),
+                }
+            )
+
+        data = self.serializer_class(items, many=True).data
+        total = getattr(res.hits, "total", None)
+        total_value = getattr(total, "value", len(items)) if total else len(items)
+
+        return Response({"query": q, "count": total_value, "results": data}, status=status.HTTP_200_OK)
