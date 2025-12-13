@@ -11,3 +11,5 @@ tzdata==2025.2
 webencodings==0.5.1
 daphne
 django-cors-headers
+psycopg2-binary==2.9.9
+channels-redis
