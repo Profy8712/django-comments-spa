@@ -1,27 +1,102 @@
 # 🌟 Django Comments SPA — Enterprise-Grade Documentation
 
-A **production-ready Single Page Application (SPA)** for managing **hierarchical comments** with a strong focus on scalability, security, and modern backend architecture.
+A **production-ready Single Page Application (SPA)** for managing **hierarchical comments**, designed with a strong focus on **backend architecture**, **security**, **scalability**, and **real-world production practices**.
 
-This project demonstrates a **Middle+/Senior-level Django backend solution**, suitable for real-world production use and technical interviews.
+This project demonstrates a **Middle+/Senior-level Django backend solution** with a modern SPA frontend, suitable for technical interviews and real production usage.
+
+---
+
+## 🎯 Project Goals (Assignment-Oriented Overview)
+
+The goal of this project is to implement a **full-featured comments system** that clearly demonstrates:
+
+- Backend-first architecture
+- Secure and scalable API design
+- Modern SPA interaction model
+- Protection against spam and XSS
+- Real-time data updates
+- Production-ready deployment setup
+
+Each requirement from the assignment is **explicitly covered and implemented**.
 
 ---
 
 ## 🚀 Key Capabilities
 
-- Unlimited nested comments (tree structure)
-- Image & text attachments
-- Automatic image resizing (Pillow)
-- Lightbox image viewer
-- XSS protection with strict allowlist
-- CAPTCHA spam protection
+### 🧠 Backend (Core Focus)
+
+- Unlimited nested comments (adjacency list model)
+- RESTful API built with Django REST Framework
+- Hybrid security model (JWT + CAPTCHA)
+- Strong server-side XSS protection
+- File upload handling with validation
+- Image processing (automatic resizing via Pillow)
+- Full-text search using Elasticsearch
+- Real-time updates via WebSockets (Django Channels)
+- Background processing with Celery
+- Clean separation of concerns
+- Optimized database queries
+- Fully Dockerized services
+
+### 🎨 Frontend (SPA Client)
+
+- Vue 3 + Vite Single Page Application
+- Comment tree rendering (nested replies)
 - Live preview before submission
-- Pagination (25 root comments per page)
-- Sorting by multiple fields
-- Real-time WebSocket updates
-- Full-text search with Elasticsearch
-- Fully Dockerized infrastructure
-- Ready for AWS EC2 deployment
-- CI/CD automation with GitHub Actions
+- CAPTCHA support for anonymous users
+- JWT-based authorized actions
+- Attachment upload UI
+- Lightbox image viewer
+- Real-time updates without page reload
+- Clean separation between frontend and backend
+
+---
+
+## 🔐 Authentication & Security Flow (JWT + CAPTCHA)
+
+This project implements a **hybrid security model**, widely used in production SPAs.
+
+| User Type | Authentication | CAPTCHA |
+|---------|---------------|--------|
+| Anonymous | ❌ | ✅ |
+| Authorized | JWT | ❌ |
+
+### Why this approach?
+- CAPTCHA protects against bots and spam
+- JWT provides smooth UX for trusted users
+- Stateless authentication (no sessions, no cookies)
+- Scales well horizontally
+
+---
+
+## 🔑 JWT Authentication (Backend)
+
+JWT is implemented using **Django REST Framework SimpleJWT**.
+
+### Obtain Token
+```
+POST /api/auth/token/
+```
+
+```json
+{
+  "username": "alex2",
+  "password": "Qwerty12345!"
+}
+```
+
+Response:
+```json
+{
+  "access": "<access_token>",
+  "refresh": "<refresh_token>"
+}
+```
+
+Usage:
+```
+Authorization: Bearer <access_token>
+```
 
 ---
 
@@ -29,28 +104,27 @@ This project demonstrates a **Middle+/Senior-level Django backend solution**, su
 
 ```
 django_comments_spa/
-│── comments/
+│── comments/                  # Core comments logic
 │   ├── models.py              # Comment & Attachment models
-│   ├── serializers.py         # Nested serializers, validation, CAPTCHA
-│   ├── views.py               # REST API + search API
+│   ├── serializers.py         # Validation, XSS, CAPTCHA logic
+│   ├── views.py               # REST API views
 │   ├── documents.py           # Elasticsearch documents
 │   ├── consumers.py           # WebSocket consumers
 │   ├── validators.py          # File validation rules
 │   └── urls.py
 │
-│── core/
-│   ├── settings.py            # Django, DRF, Channels, Celery, Elasticsearch
+│── accounts/                  # Authentication & JWT
+│   ├── serializers.py
+│   ├── views.py
+│   └── urls.py
+│
+│── core/                      # Project configuration
+│   ├── settings.py            # Django, DRF, JWT, Channels, Celery
 │   ├── routing.py             # WebSocket routing
 │   ├── asgi.py
 │   └── celery.py
 │
 │── frontend/                  # Vue 3 + Vite SPA
-│   └── src/
-│       ├── api/
-│       ├── components/
-│       ├── helpers/
-│       └── App.vue
-│
 │── media/                     # Uploaded files
 │── docker-compose.yml
 │── Dockerfile.backend
@@ -62,33 +136,14 @@ django_comments_spa/
 
 ---
 
-## 🧠 Backend Architecture
+## 🧵 Nested Comments Implementation
 
-### Core Stack
-- Python 3.12
-- Django 4+
-- Django REST Framework
-- Django Channels (WebSockets)
-- Celery (async tasks)
-- RabbitMQ (message broker)
-- Redis (Celery backend & Channels layer)
-- PostgreSQL (main database)
-- Elasticsearch 8 + Kibana (search & analytics)
-
-### Key Design Decisions
-- **Separation of concerns** (API, async tasks, search, real-time)
-- **Event-driven updates** via WebSockets
-- **Asynchronous processing** for heavy tasks
-- **Search engine offloading** to Elasticsearch
-- **Docker-first** development and deployment
-
----
-
-## 🧵 Nested Comments
-
-- Unlimited nesting using `parent` foreign key
+- Adjacency list (`parent` ForeignKey)
+- Unlimited nesting depth
 - Recursive serialization
-- Optimized queries with `select_related` and `prefetch_related`
+- Optimized with `select_related` and `prefetch_related`
+
+This approach ensures good performance even with deep comment trees.
 
 ---
 
@@ -106,58 +161,51 @@ GET /api/search/comments/?q=alex
 
 Features:
 - Fuzzy matching (`AUTO`)
+- Independent scaling
 - Fast indexing
-- Independent search scaling
-- Index rebuild support
+
+Rebuild index:
+```bash
+docker exec -it comments_backend python manage.py search_index --rebuild
+```
 
 ---
 
-## 🔐 Security
+## 🛡 XSS Protection & Validation
 
-- Strict XSS protection (Bleach)
-- Allowed tags only:
-  - `<a>`
-  - `<i>`
-  - `<strong>`
-  - `<code>`
-- SQL injection protection via ORM
-- CAPTCHA required for comment creation
-- File type & size validation
+- Raw HTML is fully blocked
+- Only allowed pseudo-tags:
+  - [a]
+  - [i]
+  - [strong]
+  - [code]
+- Tags must be balanced and properly nested
+- Validation is enforced server-side
 
 ---
 
 ## 📎 File Attachments
 
 | Type | Rules |
-|-----|------|
-| Images | Auto-resized to max 320×240 |
-| TXT files | ≤ 100 KB, UTF-8 only |
+|----|------|
+| Images | JPG / PNG / GIF, auto-resized to 320×240 |
+| Text | `.txt`, UTF-8, ≤ 100 KB |
 
 Upload endpoint:
 ```
 POST /api/comments/<id>/upload/
 ```
 
+Uploads are allowed **only for authenticated users**.
+
 ---
 
 ## ⚡ Real-Time Updates
 
-- Django Channels + Redis
-- Broadcast on new comment creation
+- Implemented with Django Channels + Redis
+- WebSocket broadcast on new comment creation
 - All connected clients update instantly
-- No page reload required
-
----
-
-## 📦 Pagination & Sorting
-
-Pagination:
-- 25 root comments per page
-
-Sorting:
-- Username
-- Email
-- Created date (ASC / DESC)
+- No polling, no page reload
 
 ---
 
@@ -174,53 +222,46 @@ Services:
 - elasticsearch
 - kibana
 
-Run:
+Run locally:
 ```bash
 docker compose up --build
 ```
 
-Rebuild search index:
-```bash
-docker exec -it comments_backend python manage.py search_index --rebuild
-```
-
 ---
 
-## ☁️ AWS EC2 Deployment (Overview)
+## ☁️ Deployment Readiness (AWS EC2)
 
-1. Launch Ubuntu 22.04 EC2 instance
-2. Install Docker & Docker Compose
-3. Clone repository
-4. Configure `.env`
-5. Run Docker Compose
-6. Add Nginx reverse proxy
-7. Enable HTTPS with Certbot
-8. Configure GitHub Actions for CI/CD
+- Docker-based deployment
+- Environment variables via `.env`
+- Nginx reverse proxy
+- HTTPS with Certbot
+- CI/CD via GitHub Actions
 
 ---
 
 ## 🔄 CI/CD Pipeline
 
-GitHub Actions workflow:
-- SSH into EC2
-- Pull latest code
-- Rebuild containers
-- Restart services
+1. Push to GitHub
+2. GitHub Actions triggered
+3. SSH into EC2
+4. Pull latest code
+5. Rebuild containers
+6. Restart services
 
-Supports zero-downtime deployment.
+Supports zero-downtime deployments.
 
 ---
 
 ## 🧪 Testing
 
-Test coverage includes:
+Covered:
 - Nested comments logic
-- File validators
-- XSS sanitization
-- Pagination behavior
+- XSS validation
 - CAPTCHA validation
-- WebSocket events
+- JWT permissions
+- File validation
 - Search indexing
+- WebSocket events
 
 Run tests:
 ```bash
@@ -229,21 +270,9 @@ python manage.py test
 
 ---
 
-## 🎯 Project Purpose
-
-This project showcases:
-- Real-world Django architecture
-- Async processing with Celery
-- Message brokers & background workers
-- Full-text search integration
-- Production-ready Docker setup
-- Cloud deployment readiness
-
----
-
 ## 👤 Author
 
-**Alexander Kurin**  
+**Oleksandr Kurin**  
 Python Backend Developer
 
 **Stack:**  
@@ -252,4 +281,5 @@ Django • FastAPI • Celery • Redis • RabbitMQ • Elasticsearch • Docke
 ---
 
 ## 📄 License
+
 MIT
