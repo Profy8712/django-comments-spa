@@ -5,7 +5,7 @@ from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 
 from rest_framework import filters, generics, parsers, status
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -20,8 +20,14 @@ from .serializers import (
 
 
 class CommentListCreateView(generics.ListCreateAPIView):
+    """
+    GET: public
+    POST:
+      - anonymous -> allowed, CAPTCHA required (handled in serializer)
+      - JWT user  -> allowed, CAPTCHA not required
+    """
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [AllowAny]
 
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["user_name", "email", "created_at"]
@@ -40,6 +46,12 @@ class CommentListCreateView(generics.ListCreateAPIView):
             )
         )
 
+    def get_serializer_context(self):
+        # IMPORTANT: serializer needs request to detect JWT user and skip captcha
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
+
     def perform_create(self, serializer):
         comment = serializer.save()
 
@@ -51,6 +63,9 @@ class CommentListCreateView(generics.ListCreateAPIView):
 
 
 class CommentDetailView(generics.RetrieveAPIView):
+    """
+    GET: public
+    """
     queryset = Comment.objects.all().prefetch_related(
         "attachments",
         "children",
@@ -59,11 +74,21 @@ class CommentDetailView(generics.RetrieveAPIView):
         "children__children__attachments",
     )
     serializer_class = CommentSerializer
+    permission_classes = [AllowAny]
+
+    def get_serializer_context(self):
+        ctx = super().get_serializer_context()
+        ctx["request"] = self.request
+        return ctx
 
 
 class CaptchaAPIView(APIView):
+    """
+    GET /api/captcha/
+    -> { "key": "<hash>", "image": "/captcha/image/<hash>/" }
+    """
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
         key = CaptchaStore.generate_key()
@@ -72,8 +97,12 @@ class CaptchaAPIView(APIView):
 
 
 class AttachmentUploadView(generics.CreateAPIView):
+    """
+    Upload attachments ONLY with JWT (recommended).
+    """
     serializer_class = AttachmentCreateSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    permission_classes = [IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
         comment_id = kwargs.get("pk")
@@ -94,7 +123,12 @@ class AttachmentUploadView(generics.CreateAPIView):
 
 
 class CommentSearchAPIView(APIView):
+    """
+    GET /api/search/comments/?q=...
+    Public endpoint.
+    """
     serializer_class = CommentSearchResultSerializer
+    permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
         q = (request.query_params.get("q") or "").strip()
@@ -114,17 +148,16 @@ class CommentSearchAPIView(APIView):
 
         res = search.execute()
 
-        items = []
-        for hit in res:
-            items.append(
-                {
-                    "id": int(hit.id),
-                    "user_name": getattr(hit, "user_name", None),
-                    "email": getattr(hit, "email", None),
-                    "text": getattr(hit, "text", None),
-                    "created_at": getattr(hit, "created_at", None),
-                }
-            )
+        items = [
+            {
+                "id": int(hit.id),
+                "user_name": getattr(hit, "user_name", None),
+                "email": getattr(hit, "email", None),
+                "text": getattr(hit, "text", None),
+                "created_at": getattr(hit, "created_at", None),
+            }
+            for hit in res
+        ]
 
         data = self.serializer_class(items, many=True).data
         total = getattr(res.hits, "total", None)

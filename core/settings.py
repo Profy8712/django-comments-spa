@@ -1,10 +1,14 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 from typing import List
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+# =============================================================================
+# Helpers
+# =============================================================================
 def env(name: str, default: str | None = None) -> str:
     value = os.getenv(name, default)
     if value is None:
@@ -21,6 +25,9 @@ def env_list(name: str, default: str = "") -> List[str]:
     return [x.strip() for x in value.split(",") if x.strip()]
 
 
+# =============================================================================
+# Core
+# =============================================================================
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "change-me-in-env")
 DEBUG = env_bool("DJANGO_DEBUG", "1")
 
@@ -35,6 +42,10 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 
+
+# =============================================================================
+# Applications
+# =============================================================================
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -43,18 +54,24 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
+    # third-party
     "corsheaders",
     "rest_framework",
+    "rest_framework_simplejwt",
     "captcha",
     "channels",
     "django_extensions",
-
     "django_elasticsearch_dsl",
 
+    # local
     "comments",
     "accounts",
 ]
 
+
+# =============================================================================
+# Middleware
+# =============================================================================
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -68,6 +85,10 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+
+# =============================================================================
+# URLs / ASGI / WSGI
+# =============================================================================
 ROOT_URLCONF = "core.urls"
 
 TEMPLATES = [
@@ -88,6 +109,10 @@ TEMPLATES = [
 WSGI_APPLICATION = "core.wsgi.application"
 ASGI_APPLICATION = "core.asgi.application"
 
+
+# =============================================================================
+# Database
+# =============================================================================
 DB_ENGINE = os.getenv("DB_ENGINE", "postgres").lower()
 
 if DB_ENGINE == "sqlite":
@@ -109,6 +134,10 @@ else:
         }
     }
 
+
+# =============================================================================
+# Auth / i18n / static
+# =============================================================================
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -131,26 +160,24 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # =============================================================================
-# DRF + JWT
+# Django REST Framework + JWT
 # =============================================================================
 REST_FRAMEWORK = {
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": int(os.getenv("DRF_PAGE_SIZE", "25")),
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.AllowAny",
     ),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": int(os.getenv("DRF_PAGE_SIZE", "25")),
 }
 
-
-# SimpleJWT settings (можно оставить дефолт, но лучше явно)
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": __import__("datetime").timedelta(
+    "ACCESS_TOKEN_LIFETIME": timedelta(
         minutes=int(os.getenv("JWT_ACCESS_MINUTES", "60"))
     ),
-    "REFRESH_TOKEN_LIFETIME": __import__("datetime").timedelta(
+    "REFRESH_TOKEN_LIFETIME": timedelta(
         days=int(os.getenv("JWT_REFRESH_DAYS", "7"))
     ),
     "AUTH_HEADER_TYPES": ("Bearer",),
@@ -158,7 +185,7 @@ SIMPLE_JWT = {
 
 
 # =============================================================================
-# CORS/CSRF
+# CORS / CSRF
 # =============================================================================
 FRONTEND_ORIGINS = env_list(
     "FRONTEND_ORIGINS",
@@ -175,12 +202,14 @@ CSRF_TRUSTED_ORIGINS = env_list(
 
 
 # =============================================================================
-# Channels
+# Channels (WebSockets)
 # =============================================================================
 CHANNEL_LAYER = os.getenv("CHANNEL_LAYER", "redis").lower()
 
 if CHANNEL_LAYER == "inmemory":
-    CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+    CHANNEL_LAYERS = {
+        "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
+    }
 else:
     CHANNEL_LAYERS = {
         "default": {
@@ -204,10 +233,12 @@ CELERY_BROKER_URL = os.getenv(
     "CELERY_BROKER_URL",
     "amqp://guest:guest@rabbitmq:5672//",
 )
+
 CELERY_RESULT_BACKEND = os.getenv(
     "CELERY_RESULT_BACKEND",
     "redis://redis:6379/1",
 )
+
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -217,8 +248,15 @@ CELERY_TIMEZONE = os.getenv("CELERY_TIMEZONE", "UTC")
 # =============================================================================
 # Elasticsearch
 # =============================================================================
-ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
-ELASTICSEARCH_DSL = {"default": {"hosts": ELASTICSEARCH_HOST}}
+ELASTICSEARCH_HOST = os.getenv(
+    "ELASTICSEARCH_HOST",
+    "http://elasticsearch:9200",
+)
+
+ELASTICSEARCH_DSL = {
+    "default": {"hosts": ELASTICSEARCH_HOST},
+}
+
 ELASTICSEARCH_DSL_AUTOSYNC = env_bool("ELASTICSEARCH_DSL_AUTOSYNC", "1")
 
 
@@ -234,10 +272,19 @@ SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", "0")
 CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", "0")
 
 
+# =============================================================================
+# Logging
+# =============================================================================
 LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", "INFO")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": LOG_LEVEL,
+    },
 }

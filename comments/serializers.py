@@ -22,8 +22,9 @@ class AttachmentCreateSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     attachments = AttachmentSerializer(many=True, read_only=True)
 
-    captcha_key = serializers.CharField(write_only=True)
-    captcha_value = serializers.CharField(write_only=True)
+    # CAPTCHA required ONLY for anonymous users
+    captcha_key = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    captcha_value = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = Comment
@@ -47,6 +48,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
         text = str(value)
 
+        # Block raw HTML
         if "<" in text or ">" in text:
             raise serializers.ValidationError(
                 "Raw HTML is not allowed. Use pseudo-tags like [i]...[/i] instead."
@@ -81,8 +83,22 @@ class CommentSerializer(serializers.ModelSerializer):
         return text
 
     def validate(self, attrs):
-        key = attrs.get("captcha_key")
-        value = attrs.get("captcha_value")
+        """
+        - Anonymous -> CAPTCHA required
+        - Authenticated (JWT) -> CAPTCHA not required
+        """
+        request = self.context.get("request")
+        is_auth = bool(request and request.user and request.user.is_authenticated)
+
+        if is_auth:
+            # JWT user: skip captcha
+            attrs.pop("captcha_key", None)
+            attrs.pop("captcha_value", None)
+            return attrs
+
+        # anonymous: captcha required
+        key = (attrs.get("captcha_key") or "").strip()
+        value = (attrs.get("captcha_value") or "").strip()
 
         if not key or not value:
             raise serializers.ValidationError({"captcha_value": ["CAPTCHA is required."]})
@@ -93,7 +109,7 @@ class CommentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"captcha_value": ["Invalid CAPTCHA value."]})
 
         expected = (store.response or "").strip().lower()
-        given = (value or "").strip().lower()
+        given = value.lower()
 
         if expected != given:
             raise serializers.ValidationError({"captcha_value": ["Invalid CAPTCHA value."]})

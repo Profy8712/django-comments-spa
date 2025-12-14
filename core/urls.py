@@ -3,14 +3,19 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
 
-    # API
+    # JWT
+    path("api/auth/token/", TokenObtainPairView.as_view(), name="jwt-token-obtain"),
+    path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="jwt-token-refresh"),
+
     path("api/", include("comments.urls")),
     path("api/accounts/", include("accounts.urls")),
 
-    # captcha images (/captcha/image/<hash>/)
+    # django-simple-captcha (если используешь)
     path("captcha/", include("captcha.urls")),
 ]
 
