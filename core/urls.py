@@ -5,8 +5,12 @@ from django.urls import include, path
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+
+    # API
     path("api/", include("comments.urls")),
     path("api/accounts/", include("accounts.urls")),
+
+    # captcha images (/captcha/image/<hash>/)
     path("captcha/", include("captcha.urls")),
 ]
 

@@ -22,9 +22,8 @@ class AttachmentCreateSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     attachments = AttachmentSerializer(many=True, read_only=True)
 
-    # Not stored in DB, only for captcha validation
-    captcha_key = serializers.CharField(write_only=True, required=True)
-    captcha_value = serializers.CharField(write_only=True, required=True)
+    captcha_key = serializers.CharField(write_only=True)
+    captcha_value = serializers.CharField(write_only=True)
 
     class Meta:
         model = Comment
@@ -43,20 +42,11 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "attachments")
 
     def validate_text(self, value: str) -> str:
-        """
-        Basic server-side XSS protection + pseudo-tag validation.
-
-        Rules:
-        - Raw HTML (< or >) is forbidden.
-        - Only pseudo-tags [i], [strong], [code], [a] are allowed.
-        - Pseudo-tags must be balanced and properly nested.
-        """
         if value is None:
             return value
 
         text = str(value)
 
-        # Block raw HTML completely
         if "<" in text or ">" in text:
             raise serializers.ValidationError(
                 "Raw HTML is not allowed. Use pseudo-tags like [i]...[/i] instead."
@@ -91,10 +81,6 @@ class CommentSerializer(serializers.ModelSerializer):
         return text
 
     def validate(self, attrs):
-        """
-        Validate captcha_key + captcha_value against CaptchaStore.
-        Captcha entry is deleted after successful validation.
-        """
         key = attrs.get("captcha_key")
         value = attrs.get("captcha_value")
 
@@ -112,12 +98,10 @@ class CommentSerializer(serializers.ModelSerializer):
         if expected != given:
             raise serializers.ValidationError({"captcha_value": ["Invalid CAPTCHA value."]})
 
-        # prevent reuse
         store.delete()
         return attrs
 
     def create(self, validated_data):
-        # remove non-model fields
         validated_data.pop("captcha_key", None)
         validated_data.pop("captcha_value", None)
         return super().create(validated_data)
