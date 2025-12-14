@@ -4,7 +4,7 @@ services:
     container_name: comments_db
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.local
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-comments_db}
       POSTGRES_USER: ${POSTGRES_USER:-comments_user}
@@ -80,7 +80,7 @@ services:
     container_name: comments_backend
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.local
     depends_on:
       db:
         condition: service_healthy
@@ -109,7 +109,7 @@ services:
     container_name: comments_celery
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.local
     depends_on:
       backend:
         condition: service_started
@@ -136,7 +136,7 @@ services:
     container_name: comments_celery_beat
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.local
     depends_on:
       backend:
         condition: service_started

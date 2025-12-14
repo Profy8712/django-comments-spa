@@ -27,6 +27,8 @@ static/
 .env
 .env.*
 *.env
+.env.local
+.env.prod
 
 # IDE
 .idea/
