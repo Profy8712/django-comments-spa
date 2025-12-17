@@ -10,11 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER:-comments_user} -d ${POSTGRES_DB:-comments_db}"
-        ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-comments_user} -d ${POSTGRES_DB:-comments_db}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -44,10 +40,12 @@ services:
       timeout: 5s
       retries: 20
 
+  # Optional for local only (use profile "search")
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
     container_name: comments_elasticsearch
     restart: unless-stopped
+    profiles: ["search"]
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -58,11 +56,7 @@ services:
     ports:
       - "${ES_PORT:-9200}:9200"
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s >/dev/null || exit 1"
-        ]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -71,6 +65,7 @@ services:
     image: docker.elastic.co/kibana/kibana:8.15.3
     container_name: comments_kibana
     restart: unless-stopped
+    profiles: ["search"]
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     depends_on:
@@ -92,8 +87,21 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
+    # ⬇️ ВАЖНО: env-based settings
+    environment:
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-core.settings.local}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-unsafe-dev-key}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      POSTGRES_DB: ${POSTGRES_DB:-comments_db}
+      POSTGRES_USER: ${POSTGRES_USER:-comments_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-comments_pass}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
       - .:/app
       - ./media:/app/media
@@ -121,8 +129,18 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
+    # ⬇️ ВАЖНО: env-based settings
+    environment:
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-core.settings.local}
+      POSTGRES_DB: ${POSTGRES_DB:-comments_db}
+      POSTGRES_USER: ${POSTGRES_USER:-comments_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-comments_pass}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
       - .:/app
       - ./media:/app/media
@@ -146,8 +164,18 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
+    # ⬇️ ВАЖНО: env-based settings
+    environment:
+      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-core.settings.local}
+      POSTGRES_DB: ${POSTGRES_DB:-comments_db}
+      POSTGRES_USER: ${POSTGRES_USER:-comments_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-comments_pass}
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
       - .:/app
     command: >
