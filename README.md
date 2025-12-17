@@ -460,20 +460,38 @@ https://SERVER_IP/api/captcha/
 wss://SERVER_IP/ws/comments/
 ```
 
+⚠️ **Important:**  
+HTTPS is enabled using a **self-signed SSL certificate**.  
+The browser security warning is expected and acceptable for this project.
+
+---
+
+## 🧪 Test Credentials
+
+The application is deployed for **testing and review purposes**.
+
+You can use the following credentials to test **authenticated functionality**:
+JWT authentication, authorized comment posting, and file uploads.
+
+**Test user**
+- Login: `user`
+- Password: `User12345!`
+
+⚠️ These credentials are provided **for testing only** and have no administrative privileges.
+
 ---
 
 ## 🔐 HTTPS Details (Important)
 
-- HTTPS is enabled via **self‑signed certificate**
-- No domain name is used
+- HTTPS is enabled via a **self-signed SSL certificate**
+- No domain name is used (IP-based access)
 - Nginx terminates SSL and proxies traffic to Docker containers
-- This setup reflects a **realistic IP‑based server deployment**
+- This setup reflects a **realistic production-style deployment** for:
+  - test assignments
+  - internal tools
+  - backend portfolio projects
+  - resource-limited environments
 
-This approach is commonly used for:
-- test assignments
-- internal tools
-- backend portfolio projects
-- resource‑limited servers
 
 ---
 
