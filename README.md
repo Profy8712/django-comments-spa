@@ -273,17 +273,31 @@ SIMPLE_JWT = {
 
 ```
 django_comments_spa/
-│── comments/          # Comments logic, serializers, validators
-│── accounts/          # Authentication & JWT
-│── core/              # Settings, ASGI, routing, Celery
-│── frontend/          # Vue 3 SPA
-│── media/             # Uploaded files
-│── docker-compose.yml
-│── Dockerfile.backend
-│── Dockerfile.frontend
-│── requirements.txt
-│── manage.py
-│── README.md
+├── accounts/            # Authentication & JWT
+├── comments/            # Comments logic, serializers, validators
+├── core/
+│   ├── settings/        # Environment-based Django settings
+│   │   ├── __init__.py
+│   │   ├── base.py      # Base settings (shared)
+│   │   ├── local.py     # Local / development settings
+│   │   └── production.py# Production settings
+│   ├── __init__.py
+│   ├── asgi.py          # ASGI entrypoint (Django Channels)
+│   ├── celery.py        # Celery app
+│   ├── urls.py          # Root URL configuration
+│   └── wsgi.py          # WSGI entrypoint
+├── frontend/            # Vue 3 SPA
+├── media/               # Uploaded files
+├── staticfiles/         # Collected static files (production)
+├── docker-compose.yml
+├── docker-compose.prod.yml
+├── Dockerfile.backend
+├── manage.py
+├── requirements.txt
+├── README.md
+├── .env.local
+└── .env.prod
+
 ```
 
 ---
