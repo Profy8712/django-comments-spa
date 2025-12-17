@@ -493,13 +493,17 @@ JWT authentication, authorized comment posting, and file uploads.
   - resource-limited environments
 
 ---
-
 ## 📊 Database Schema
 
-The database schema is provided in `docs/db_schema.sql`
-and can be opened in MySQL Workbench to review table structure
-and relationships.
+The database schema is provided in `docs/db_schema.sql`.
 
+The file can be opened in **MySQL Workbench** to review:
+- table structure
+- relationships
+- constraints
+
+Note: The project uses PostgreSQL, but MySQL Workbench is used
+as a universal schema viewer for review purposes.
 
 ## 👤 Author
 
