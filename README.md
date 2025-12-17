@@ -492,8 +492,14 @@ JWT authentication, authorized comment posting, and file uploads.
   - backend portfolio projects
   - resource-limited environments
 
-
 ---
+
+## 📊 Database Schema
+
+The database schema is provided in `docs/db_schema.sql`
+and can be opened in MySQL Workbench to review table structure
+and relationships.
+
 
 ## 👤 Author
 
