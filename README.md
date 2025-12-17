@@ -357,6 +357,18 @@ http://localhost:5173
 Backend API:  
 http://localhost:8000/api/
 
+Django admin:
+http://localhost:8000/admin/
+
+RabbitMQ UI:
+http://localhost:15672
+login guest, password guest
+
+Elasticsearch:
+http://localhost:9200
+
+Kibana:
+http://localhost:5601
 ---
 
 ## ☁️ AWS EC2 Deployment (Production‑Style)
