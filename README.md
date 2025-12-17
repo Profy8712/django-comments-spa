@@ -324,6 +324,8 @@ django_comments_spa/
 ---
 
 ## 📎 File Upload Rules
+Attachments are available for authorized users only (JWT)
+This design prevents anonymous file uploads and reduces spam risk.
 
 | Type | Rules |
 |------|------|
