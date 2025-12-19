@@ -387,82 +387,91 @@ Kibana:
 http://localhost:5601
 ---
 
-## ☁️ AWS EC2 Deployment (Production‑Style)
+## ☁️ AWS EC2 Deployment (Production-Style)
 
 ### Environment
 
-- Ubuntu EC2 instance
+- AWS EC2 (Ubuntu)
 - Docker + Docker Compose
 - Nginx as reverse proxy
-- HTTPS with **self‑signed SSL certificate**
-- No domain name
+- HTTPS (Let’s Encrypt)
+- Public domain name (DuckDNS)
 
-### Why Self‑Signed?
+---
 
-- Deployment via IP address
-- Resource‑limited environment
-- Focus on backend architecture, not PKI
+### Deployment Overview
 
-### Production Stack Differences
+The application is deployed on a **public AWS EC2 instance** using a
+**production-style setup**:
 
-| Feature | Local | AWS |
-|------|------|-----|
-| Elasticsearch | ✅ | ❌ |
-| Kibana | ✅ | ❌ |
-| Nginx | ❌ | ✅ |
-| HTTPS | ❌ | ✅ (self‑signed) |
+- Dockerized backend and services
+- Nginx handles HTTPS termination
+- Frontend (SPA) is served as static files
+- Backend API is proxied through Nginx
+- WebSocket connections are supported over **WSS**
 
-### Production Startup
+This setup reflects a **realistic production environment** suitable for:
+- backend test assignments
+- portfolio projects
+- internal tools
+- small to medium workloads
 
-```bash
-docker compose up -d --build
-sudo systemctl reload nginx
-```
+---
+
+## 🌐 Public Access
+
+The application is доступна по доменному имени:
+
+### Frontend (SPA)
+
+https://comments-spa-test.duckdns.org/
+
+clean
+Copy code
+
+### Backend API
+
+https://comments-spa-test.duckdns.org/api/
+
+clean
+Copy code
+
+### CAPTCHA endpoint
+
+https://comments-spa-test.duckdns.org/captcha/
+
+clean
+Copy code
+
+### WebSocket endpoint
+
+wss://comments-spa-test.duckdns.org/ws/comments/
+
+yaml
+Copy code
+
+---
+
+## 🔐 HTTPS Details
+
+- HTTPS is enabled via **Let’s Encrypt**
+- Nginx terminates SSL and proxies traffic to Docker containers
+- WebSocket connections are upgraded correctly (`wss://`)
+- No insecure mixed-content requests are used
+
+This ensures:
+- encrypted traffic
+- browser-trusted SSL certificate
+- correct SPA + API + WebSocket integration
 
 ---
 
 ## 🧩 Configuration Strategy
 
-- `.env` differs between local and server
-- `docker-compose.yml` adapted on server
-- This is **intentional and correct**
-- Server configs are deployment‑specific
----
-
-## 🌐 How to Access the Application (AWS EC2)
-
-The application is deployed on an **AWS EC2 instance** and is доступна **по IP‑адресу сервера**.
-
-### Public Access
-
-Replace `SERVER_IP` with the actual public IPv4 address of the EC2 instance.
-
-**Frontend (SPA):**
-```
-https://SERVER_IP/
-```
-
-> ⚠️ HTTPS uses a **self‑signed SSL certificate**, so the browser will show a security warning.
-> This is expected and acceptable for demonstration and backend‑focused projects.
-
-**Backend API:**
-```
-https://SERVER_IP/api/
-```
-
-**CAPTCHA endpoint:**
-```
-https://SERVER_IP/api/captcha/
-```
-
-**WebSocket endpoint:**
-```
-wss://SERVER_IP/ws/comments/
-```
-
-⚠️ **Important:**  
-HTTPS is enabled using a **self-signed SSL certificate**.  
-The browser security warning is expected and acceptable for this project.
+- `.env` files differ between **local** and **server** environments
+- `docker-compose.yml` is adapted for deployment needs
+- This separation is **intentional and correct**
+- Production configuration is deployment-specific
 
 ---
 
@@ -470,53 +479,51 @@ The browser security warning is expected and acceptable for this project.
 
 The application is deployed for **testing and review purposes**.
 
-You can use the following credentials to test **authenticated functionality**:
-JWT authentication, authorized comment posting, and file uploads.
+You can use the following credentials to test:
+- JWT authentication
+- authorized comment posting
+- file uploads
+- WebSocket updates
 
 **Test user**
 - Login: `user`
 - Password: `User12345!`
 
-⚠️ These credentials are provided **for testing only** and have no administrative privileges.
+⚠️ These credentials are provided **for testing only**  
+and have no administrative privileges.
 
 ---
 
-## 🔐 HTTPS Details (Important)
-
-- HTTPS is enabled via a **self-signed SSL certificate**
-- No domain name is used (IP-based access)
-- Nginx terminates SSL and proxies traffic to Docker containers
-- This setup reflects a **realistic production-style deployment** for:
-  - test assignments
-  - internal tools
-  - backend portfolio projects
-  - resource-limited environments
-
----
 ## 📊 Database Schema
 
-The database schema is provided in `docs/db_schema.sql`.
+The database schema is provided in:
+
+docs/db_schema.sql
+
+yaml
+Copy code
 
 The file can be opened in **MySQL Workbench** to review:
 - table structure
 - relationships
 - constraints
 
-Note: The project uses PostgreSQL, but MySQL Workbench is used
-as a universal schema viewer for review purposes.
+> Note: The project uses **PostgreSQL**, but MySQL Workbench is used
+> as a universal schema viewer for review purposes.
+
+---
 
 ## 👤 Author
 
 **Oleksandr Kurin**  
 Python Backend Developer
 
-Stack: Django • DRF • Celery • Redis • RabbitMQ • Docker • PostgreSQL • AWS • Vue 3
+**Tech stack:**
+Django • DRF • Celery • Redis • RabbitMQ • PostgreSQL  
+Docker • Nginx • AWS • WebSockets • Vue 3
 
 ---
 
 ## 📄 License
 
 MIT
-
----
-
