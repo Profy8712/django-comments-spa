@@ -1,19 +1,31 @@
 from .base import *
 
+# --------------------------------------------------
+# Production
+# --------------------------------------------------
 DEBUG = False
 
+# Use domain-based hosts (no IP default)
+ALLOWED_HOSTS = env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    "comments-spa-test.duckdns.org,localhost,127.0.0.1,comments_backend,comments_frontend",
+)
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "44.220.53.72")
-
-# У тебя HTTPS через nginx self-signed, поэтому доверяем заголовкам прокси
+# If you are behind nginx reverse proxy
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# Let nginx handle http->https redirect (you already do 80 -> 443)
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", False)
 
-SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", "0")
+# Cookies should be secure in HTTPS production
+SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", True)
+CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", True)
 
-SESSION_COOKIE_SECURE = env_bool("DJANGO_SESSION_COOKIE_SECURE", "0")
-CSRF_COOKIE_SECURE = env_bool("DJANGO_CSRF_COOKIE_SECURE", "0")
+# Optional: security hardening (safe defaults)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+REFERRER_POLICY = "same-origin"
 
-# AWS: Elasticsearch выключен из-за ресурсов
-ELASTICSEARCH_ENABLED = env_bool("ELASTICSEARCH_ENABLED", "0")
+# Elasticsearch switch (AWS ресурсов мало)
+ELASTICSEARCH_ENABLED = env_bool("ELASTICSEARCH_ENABLED", False)
