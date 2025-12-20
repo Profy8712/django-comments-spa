@@ -103,8 +103,8 @@ Request:
 
 ```json
 {
-  "username": "alex2",
-  "password": "Qwerty12345!"
+  "username": "example_user",
+  "password": "ExamplePassword123!"
 }
 ```
 
@@ -189,8 +189,8 @@ fetch("http://localhost:8000/api/auth/token/", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    username: "alex2",
-    password: "Qwerty12345!"
+    username: "example_user",
+    password: "ExamplePassword123!"
   })
 })
 .then(r => r.json())

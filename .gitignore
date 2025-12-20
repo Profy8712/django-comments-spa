@@ -65,3 +65,4 @@ test-results/
 venv/Lib
 db.sqlite3
 NUL
+celerybeat-schedule
