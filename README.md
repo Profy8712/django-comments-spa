@@ -420,35 +420,81 @@ This setup reflects a **realistic production environment** suitable for:
 
 ## 🌐 Public Access
 
-The application is доступна по доменному имени:
+The application is available via a public domain name.
+
+---
 
 ### Frontend (SPA)
 
+```text
 https://comments-spa-test.duckdns.org/
+```
 
-clean
-Copy code
+---
 
 ### Backend API
 
+```text
 https://comments-spa-test.duckdns.org/api/
+```
 
-clean
-Copy code
+---
 
-### CAPTCHA endpoint
+### Comments API
 
+Public endpoint for listing and creating comments.
+
+```text
+https://comments-spa-test.duckdns.org/api/comments/
+```
+
+- `GET` — list comments (public)
+- `POST` — create comment  
+  - anonymous users → **CAPTCHA required**
+  - authenticated users → **JWT**, no CAPTCHA
+
+---
+
+### CAPTCHA Endpoint
+
+```text
 https://comments-spa-test.duckdns.org/captcha/
+```
 
-clean
-Copy code
+---
 
-### WebSocket endpoint
+### WebSocket Endpoint
 
+```text
 wss://comments-spa-test.duckdns.org/ws/comments/
+```
 
-yaml
-Copy code
+---
+
+### JWT Authentication Endpoint
+
+Used to obtain **access** and **refresh** tokens.
+
+```yaml
+POST https://comments-spa-test.duckdns.org/api/auth/token/
+```
+
+**Request body (JSON):**
+```json
+{
+  "username": "user",
+  "password": "User12345!"
+}
+```
+
+**Response:**
+```json
+{
+  "access": "<JWT access token>",
+  "refresh": "<JWT refresh token>"
+}
+```
+
 
 ---
 
@@ -491,6 +537,58 @@ You can use the following credentials to test:
 
 ⚠️ These credentials are provided **for testing only**  
 and have no administrative privileges.
+
+---
+
+## 🔐 How to Get JWT Tokens
+
+To authenticate and enable authorized features:
+
+1. Open the application in your browser
+2. Open **DevTools → Console**
+3. Execute the following command:
+
+```js
+fetch("https://comments-spa-test.duckdns.org/api/auth/token/", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    username: "user",
+    password: "User12345!"
+  }),
+})
+  .then(r => r.json())
+  .then(t => {
+    localStorage.setItem("access", t.access);
+    localStorage.setItem("refresh", t.refresh);
+    location.reload();
+  });
+```
+
+After this:
+- JWT tokens are stored in `localStorage`
+- File uploads become available
+- CAPTCHA is no longer required
+
+---
+
+## 🚪 How to Logout (Return to Anonymous Mode)
+
+To exit the authorized mode:
+
+1. Open **DevTools → Console**
+2. Execute:
+
+```js
+localStorage.removeItem("access");
+localStorage.removeItem("refresh");
+location.reload();
+```
+
+After logout:
+- File uploads are disabled
+- CAPTCHA is required again
+- The application works in anonymous mode
 
 ---
 
