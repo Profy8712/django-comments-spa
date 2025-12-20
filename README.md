@@ -352,7 +352,7 @@ This design prevents anonymous file uploads and reduces spam risk.
 ### Run Locally
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
 
 Local stack includes:
