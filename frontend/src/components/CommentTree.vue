@@ -1,20 +1,13 @@
 <template>
   <div class="comment-tree">
-    <div
-      v-for="comment in comments"
-      :key="comment.id"
-      class="comment-item"
-    >
+    <div v-for="comment in comments" :key="comment.id" class="comment-item">
       <div class="comment-header">
         <strong class="user-name">{{ comment.user_name }}</strong>
         <span class="email">{{ comment.email }}</span>
         <span class="date">{{ formatDate(comment.created_at) }}</span>
       </div>
 
-      <div
-        class="comment-text"
-        v-html="renderText(comment.text)"
-      ></div>
+      <div class="comment-text" v-html="renderText(comment.text)"></div>
 
       <div
         v-if="comment.attachments && comment.attachments.length"
@@ -25,7 +18,6 @@
           :key="a.id"
           class="attachment-item"
         >
-          <!-- image preview with lightbox -->
           <img
             v-if="isImageAttachment(a)"
             class="attachment-thumb"
@@ -34,7 +26,6 @@
             @click="openLightbox(resolveFileUrl(a.file))"
           />
 
-          <!-- non-image file -->
           <a
             v-else
             class="attachment-link"
@@ -47,40 +38,21 @@
         </div>
       </div>
 
-      <button
-        type="button"
-        class="reply-btn"
-        @click="toggleReply(comment.id)"
-      >
+      <button type="button" class="reply-btn" @click="toggleReply(comment.id)">
         {{ replyTo === comment.id ? "Cancel reply" : "Reply" }}
       </button>
 
       <div v-if="replyTo === comment.id" class="reply-form">
-        <CommentForm @created="handleCreated" />
+        <CommentForm :parent_id="comment.id" @created="handleCreated" />
       </div>
 
-      <div
-        v-if="comment.children && comment.children.length"
-        class="children"
-      >
-        <CommentTree
-          :comments="comment.children"
-          @changed="handleCreated"
-        />
+      <div v-if="comment.children && comment.children.length" class="children">
+        <CommentTree :comments="comment.children" @changed="handleCreated" />
       </div>
     </div>
 
-    <!-- lightbox overlay -->
-    <div
-      v-if="lightboxSrc"
-      class="lightbox-overlay"
-      @click="closeLightbox"
-    >
-      <img
-        :src="lightboxSrc"
-        alt="Attachment preview"
-        class="lightbox-image"
-      />
+    <div v-if="lightboxSrc" class="lightbox-overlay" @click="closeLightbox">
+      <img :src="lightboxSrc" alt="Attachment preview" class="lightbox-image" />
       <button
         type="button"
         class="lightbox-close"
@@ -95,7 +67,7 @@
 
 <script>
 import CommentForm from "./CommentForm.vue";
-import { BACKEND_URL } from "../api";
+import { buildUrl } from "../api/index";
 import { renderSafeHtml } from "../helpers/render";
 
 export default {
@@ -111,47 +83,58 @@ export default {
   data() {
     return {
       replyTo: null,
-      backendUrl: BACKEND_URL,
       lightboxSrc: null,
     };
   },
   methods: {
+    async handleCreated() {
+      this.replyTo = null;
+      this.$emit("changed");
+    },
+
+    toggleReply(commentId) {
+      this.replyTo = this.replyTo === commentId ? null : commentId;
+    },
+
     formatDate(value) {
       if (!value) return "";
       const date = new Date(value);
       return date.toLocaleString();
     },
-    toggleReply(id) {
-      this.replyTo = this.replyTo === id ? null : id;
-    },
-    handleCreated() {
-      this.replyTo = null;
-      this.$emit("changed");
-    },
-    renderText(text) {
-      return renderSafeHtml(text || "");
-    },
-    resolveFileUrl(file) {
-      if (!file) return "";
-      if (file.startsWith("http://") || file.startsWith("https://")) {
-        return file;
-      }
-      if (file.startsWith("/")) {
-        return `${this.backendUrl}${file}`;
-      }
-      return `${this.backendUrl}/${file}`;
-    },
-    isImageAttachment(attachment) {
-      if (!attachment || !attachment.file) return false;
-      const lower = attachment.file.toLowerCase();
-      const exts = [".jpg", ".jpeg", ".png", ".gif"];
-      return exts.some((ext) => lower.endsWith(ext));
-    },
+
     openLightbox(src) {
+      if (!src) return;
       this.lightboxSrc = src;
     },
+
     closeLightbox() {
       this.lightboxSrc = null;
+    },
+
+        resolveFileUrl(file) {
+        if (!file) return "";
+
+        // If backend already returned absolute URL — use it as-is
+        if (file.startsWith("http://") || file.startsWith("https://")) {
+          return file;
+        }
+
+        // Otherwise build absolute URL
+        return buildUrl(file.startsWith("/") ? file : `/${file}`);
+      },
+
+
+
+
+    isImageAttachment(attachment) {
+      const f = attachment?.file || "";
+      const lower = String(f).toLowerCase();
+      const exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+      return exts.some((ext) => lower.endsWith(ext));
+    },
+
+    renderText(text) {
+      return renderSafeHtml(text || "");
     },
   },
 };
@@ -159,127 +142,127 @@ export default {
 
 <style scoped>
 .comment-tree {
-  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .comment-item {
   border: 1px solid #e5e7eb;
-  padding: 0.9rem 1rem;
-  margin-bottom: 0.9rem;
   border-radius: 10px;
-  background-color: #ffffff;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+  padding: 12px;
+  background: #fff;
 }
 
 .comment-header {
   display: flex;
-  gap: 0.5rem;
+  flex-wrap: wrap;
   align-items: baseline;
-  font-size: 0.9rem;
-  margin-bottom: 0.35rem;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .user-name {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .email {
   color: #6b7280;
+  font-size: 0.9rem;
 }
 
 .date {
   margin-left: auto;
-  font-size: 0.8rem;
-  color: #9ca3af;
+  color: #6b7280;
+  font-size: 0.85rem;
 }
 
 .comment-text {
-  margin: 0.35rem 0 0.6rem;
-  font-size: 0.95rem;
-  line-height: 1.5;
+  margin: 8px 0 10px;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .attachments {
-  margin-bottom: 0.5rem;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 10px;
+  margin: 8px 0 10px;
 }
 
 .attachment-item {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
 }
 
 .attachment-thumb {
-  max-width: 130px;
-  max-height: 130px;
+  width: 160px;
+  height: 120px;
+  object-fit: cover;
   border-radius: 8px;
-  cursor: pointer;
   border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.attachment-thumb:hover {
-  transform: scale(1.04);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  cursor: zoom-in;
 }
 
 .attachment-link {
-  font-size: 0.85rem;
   color: #2563eb;
   text-decoration: underline;
 }
 
 .reply-btn {
-  font-size: 0.85rem;
-  padding: 0.25rem 0.7rem;
-  border-radius: 999px;
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 8px;
   border: 1px solid #e5e7eb;
-  background-color: #f9fafb;
+  background: #f9fafb;
   cursor: pointer;
 }
 
-.reply-btn:hover {
-  background-color: #e5f0ff;
+.reply-form {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #eef2f7;
 }
 
 .children {
-  margin-left: 1.5rem;
-  padding-left: 0.75rem;
-  border-left: 2px solid #f3f4f6;
-  margin-top: 0.7rem;
+  margin-top: 12px;
+  padding-left: 14px;
+  border-left: 2px solid #eef2f7;
 }
-
-/* lightbox styles */
 
 .lightbox-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  padding: 18px;
 }
 
 .lightbox-image {
-  max-width: 90%;
-  max-height: 90%;
+  max-width: min(1100px, 95vw);
+  max-height: 90vh;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .lightbox-close {
-  position: absolute;
-  top: 20px;
-  right: 30px;
-  font-size: 2.5rem;
-  background: transparent;
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
   border: none;
-  color: #f9fafb;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 26px;
+  line-height: 44px;
   cursor: pointer;
-  line-height: 1;
 }
 </style>

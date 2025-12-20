@@ -1,25 +1,22 @@
 // frontend/src/api/attachments.js
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-/**
- * Upload a single attachment for the given comment.
- * Backend URL: POST /api/comments/<id>/upload/
- */
-export async function uploadAttachment(commentId, file) {
+import { apiPostForm, getAccessToken } from "./index";
+
+export function uploadAttachment(commentId, file) {
+  if (!commentId) throw new Error("commentId is required");
+  if (!file) throw new Error("file is required");
+
+  // Hard guard: anonymous must NOT upload files
+  const token = getAccessToken();
+  if (!token) {
+    const err = new Error("Attachments are allowed only for authenticated users.");
+    err.status = 401;
+    throw err;
+  }
+
   const formData = new FormData();
   formData.append("file", file);
 
-  const resp = await fetch(`${API_URL}/api/comments/${commentId}/upload/`, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    throw new Error(
-      `Failed to upload attachment (status ${resp.status}): ${text}`,
-    );
-  }
-
-  return await resp.json();
+  // Your backend route:
+  return apiPostForm(`/api/comments/${commentId}/upload/`, formData);
 }

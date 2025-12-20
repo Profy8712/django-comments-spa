@@ -1,561 +1,514 @@
+<!-- frontend/src/components/CommentForm.vue -->
 <template>
   <form class="comment-form" @submit.prevent="onSubmit">
-    <h2 class="form-title">New comment</h2>
-
-    <!-- User name -->
     <div class="form-group">
-      <label class="form-label" for="user_name">User name *</label>
+      <label class="form-label">User Name *</label>
       <input
-        id="user_name"
+        class="form-input"
         v-model.trim="form.user_name"
         type="text"
-        class="form-input"
-        :class="{ 'has-error': errors.user_name }"
-        placeholder="John Doe"
+        placeholder="Your name"
+        :disabled="submitting"
       />
       <p v-if="errors.user_name" class="error-text">{{ errors.user_name }}</p>
     </div>
 
-    <!-- Email -->
     <div class="form-group">
-      <label class="form-label" for="email">Email *</label>
+      <label class="form-label">Email *</label>
       <input
-        id="email"
+        class="form-input"
         v-model.trim="form.email"
         type="email"
-        class="form-input"
-        :class="{ 'has-error': errors.email }"
-        placeholder="john@example.com"
+        placeholder="your@email.com"
+        :disabled="submitting"
       />
       <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
     </div>
 
-    <!-- Homepage -->
     <div class="form-group">
-      <label class="form-label" for="homepage">Homepage</label>
+      <label class="form-label">Homepage</label>
       <input
-        id="homepage"
+        class="form-input"
         v-model.trim="form.homepage"
         type="url"
-        class="form-input"
         placeholder="https://example.com"
+        :disabled="submitting"
       />
+      <p v-if="errors.homepage" class="error-text">{{ errors.homepage }}</p>
     </div>
 
-    <!-- Text -->
     <div class="form-group">
-      <label class="form-label" for="text">Text *</label>
+      <label class="form-label">Text *</label>
 
       <div class="toolbar">
-        <button
-          v-for="btn in tagButtons"
-          :key="btn.tag"
-          type="button"
-          class="toolbar-btn"
-          @click="wrapWithTag(btn.tag)"
-        >
-          {{ btn.label }}
-        </button>
+        <button class="toolbar-btn" type="button" @click="insertTag('i')" :disabled="submitting">[i]</button>
+        <button class="toolbar-btn" type="button" @click="insertTag('strong')" :disabled="submitting">[strong]</button>
+        <button class="toolbar-btn" type="button" @click="insertTag('code')" :disabled="submitting">[code]</button>
+        <button class="toolbar-btn" type="button" @click="insertTag('a')" :disabled="submitting">[a]</button>
       </div>
 
       <textarea
-        id="text"
-        v-model="form.text"
+        ref="textRef"
         class="form-textarea"
-        :class="{ 'has-error': errors.text }"
+        v-model="form.text"
         rows="6"
-        placeholder="Enter your comment..."
-        data-enable-grammarly="false"
-      ></textarea>
-
-      <p class="hint-text">
-        Allowed pseudo-tags: [i], [strong], [code], [a]
-      </p>
+        placeholder="Write your comment..."
+        :disabled="submitting"
+      />
       <p v-if="errors.text" class="error-text">{{ errors.text }}</p>
     </div>
 
     <!-- Attachments -->
     <div class="form-group">
-      <label class="form-label" for="attachments">
-        Attach files (images or .txt)
-      </label>
+      <label class="form-label">Attachments</label>
+
       <input
-        id="attachments"
-        type="file"
+        ref="fileInput"
         class="form-input"
+        type="file"
         multiple
-        accept=".jpg,.jpeg,.png,.gif,.txt"
-        @change="onFilesChange"
+        accept=".jpg,.jpeg,.png,.gif,.webp,.txt"
+        @change="onFilesSelected"
+        :disabled="submitting || !hasJwt"
       />
 
-      <p class="hint-text">
-        Images: JPG, PNG, GIF (will be resized to max 320x240).<br />
-        Text: TXT ≤ 100 KB.
+      <p v-if="!hasJwt" class="error-text">
+        Attachments are available only for logged-in users.
       </p>
 
-      <ul v-if="selectedFiles.length" class="files-list">
-        <li
-          v-for="file in selectedFiles"
-          :key="file.id"
-          class="files-list-item"
-        >
-          <span>{{ file.file.name }} ({{ formatSize(file.file.size) }})</span>
-          <span v-if="file.error" class="error-text"> — {{ file.error }}</span>
-        </li>
-      </ul>
+      <!-- show selected files only for JWT users -->
+      <div v-if="hasJwt && selectedFiles.length" class="files-list">
+        <div v-for="(f, idx) in selectedFiles" :key="idx" class="file-item">
+          <span class="file-name">{{ f.file.name }}</span>
+          <span class="file-size">({{ formatBytes(f.file.size) }})</span>
 
-      <p v-if="errors.attachments" class="error-text">
-        {{ errors.attachments }}
-      </p>
+          <span v-if="f.error" class="file-error">{{ f.error }}</span>
+
+          <button class="file-remove" type="button" @click="removeFile(idx)" :disabled="submitting">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <p v-if="errors.attachments" class="error-text">{{ errors.attachments }}</p>
     </div>
 
     <!-- CAPTCHA -->
-    <div class="form-group">
-      <label class="form-label" for="captcha">CAPTCHA *</label>
+    <div v-if="!hasJwt" class="form-group">
+      <label class="form-label">CAPTCHA *</label>
 
       <div class="captcha-row">
         <div class="captcha-image-wrapper">
-          <button
-            type="button"
-            class="captcha-reload"
-            :disabled="captchaLoading"
-            @click="reloadCaptcha"
-          >
-            <span v-if="captchaLoading">Loading...</span>
-            <img
-              v-else-if="captchaImage"
-              :src="captchaImage"
-              alt="CAPTCHA"
-              class="captcha-image"
-            />
-            <span v-else>Load</span>
-          </button>
+          <img v-if="captcha.image" class="captcha-image" :src="captcha.image" alt="CAPTCHA" />
         </div>
 
+        <button
+          class="captcha-reload"
+          type="button"
+          @click="loadCaptcha"
+          :disabled="submitting || captchaLoading"
+          title="Reload CAPTCHA"
+        >
+          ⟳
+        </button>
+
         <input
-          id="captcha"
-          v-model.trim="captchaValue"
-          type="text"
           class="form-input captcha-input"
-          :class="{ 'has-error': errors.captcha }"
+          v-model.trim="form.captcha_value"
+          type="text"
+          autocomplete="off"
           placeholder="Enter text from image"
+          :disabled="submitting"
         />
       </div>
 
-      <p v-if="errors.captcha" class="error-text">{{ errors.captcha }}</p>
+      <p v-if="errors.captcha_value" class="error-text">{{ errors.captcha_value }}</p>
     </div>
 
-    <!-- Actions -->
     <div class="form-actions">
-      <button
-        type="button"
-        class="btn btn-secondary"
-        @click="togglePreview"
-      >
-        {{ showPreview ? "Hide preview" : "Show preview" }}
-      </button>
-
-      <button
-        type="submit"
-        class="btn btn-primary"
-        :disabled="submitting"
-      >
+      <button class="btn" type="submit" :disabled="submitting">
         {{ submitting ? "Sending..." : "Send comment" }}
       </button>
     </div>
 
-    <!-- Preview block -->
-    <div v-if="showPreview" class="preview-card">
-      <h3 class="preview-title">Preview</h3>
-
-      <div class="preview-meta">
-        <span><strong>User:</strong> {{ form.user_name || "—" }}</span>
-        <span><strong>Email:</strong> {{ form.email || "—" }}</span>
-        <span><strong>Homepage:</strong> {{ form.homepage || "—" }}</span>
-      </div>
-
-      <div
-        class="preview-text"
-        v-html="renderedPreview"
-      ></div>
-    </div>
+    <p v-if="errors.non_field" class="error-text">{{ errors.non_field }}</p>
   </form>
 </template>
 
-<script setup>
-import { computed, onMounted, reactive, ref } from "vue";
-import { loadCaptcha } from "@/api/captcha";
-import { createComment } from "@/api/comments";
-import { uploadAttachment } from "@/api/attachments";
+<script>
+import { apiGet, getAccessToken } from "../api/index";
+import { createComment } from "../api/comments";
+import { uploadAttachment } from "../api/attachments";
 
-const props = defineProps({
-  parentId: {
-    type: Number,
-    default: null,
+export default {
+  name: "CommentForm",
+  emits: ["created"],
+
+  props: {
+    parent_id: {
+      type: [Number, String, null],
+      default: null,
+    },
   },
-});
 
-const emit = defineEmits(["created"]);
+  data() {
+    return {
+      submitting: false,
+      captchaLoading: false,
 
-const form = reactive({
-  user_name: "",
-  email: "",
-  homepage: "",
-  text: "",
-});
+      // non-reactive storage -> keep reactive state here
+      hasJwt: false,
 
-const errors = reactive({
-  user_name: null,
-  email: null,
-  text: null,
-  captcha: null,
-  attachments: null,
-});
+      captcha: { key: "", image: "" },
 
-const tagButtons = [
-  { tag: "i", label: "[i]" },
-  { tag: "strong", label: "[strong]" },
-  { tag: "code", label: "[code]" },
-  { tag: "a", label: "[a]" },
-];
+      form: {
+        user_name: "",
+        email: "",
+        homepage: "",
+        text: "",
+        captcha_key: "",
+        captcha_value: "",
+      },
 
-const showPreview = ref(false);
-const submitting = ref(false);
+      // [{ file: File, error: string|null }]
+      selectedFiles: [],
 
-// captcha state
-const captchaImage = ref(null);
-const captchaKey = ref(null);
-const captchaValue = ref("");
-const captchaLoading = ref(false);
-
-// attachments
-const selectedFiles = ref([]); // [{ id, file, error }]
-let fileIdCounter = 0;
-
-function resetErrors() {
-  errors.user_name = null;
-  errors.email = null;
-  errors.text = null;
-  errors.captcha = null;
-  errors.attachments = null;
-}
-
-function onFilesChange(event) {
-  const files = Array.from(event.target.files || []);
-  selectedFiles.value = [];
-  errors.attachments = null;
-
-  const allowedExt = [".jpg", ".jpeg", ".png", ".gif", ".txt"];
-  const maxTxtSize = 100 * 1024;
-
-  for (const f of files) {
-    const lower = f.name.toLowerCase();
-    const ext = lower.slice(lower.lastIndexOf("."));
-
-    let error = null;
-
-    if (!allowedExt.includes(ext)) {
-      error = "Unsupported file type.";
-    } else if (ext === ".txt" && f.size > maxTxtSize) {
-      error = "TXT file must be ≤ 100 KB.";
-    }
-
-    selectedFiles.value.push({
-      id: ++fileIdCounter,
-      file: f,
-      error,
-    });
-  }
-
-  const anyValid = selectedFiles.value.some((f) => !f.error);
-  if (!anyValid && selectedFiles.value.length) {
-    errors.attachments = "All selected files are invalid.";
-  }
-}
-
-function validateForm() {
-  resetErrors();
-  let valid = true;
-
-  if (!form.user_name.trim()) {
-    errors.user_name = "User name is required.";
-    valid = false;
-  }
-
-  if (!form.email.trim()) {
-    errors.email = "Email is required.";
-    valid = false;
-  } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) {
-    errors.email = "Email is not valid.";
-    valid = false;
-  }
-
-  if (!form.text.trim()) {
-    errors.text = "Text is required.";
-    valid = false;
-  }
-
-  if (!captchaValue.value.trim()) {
-    errors.captcha = "CAPTCHA is required.";
-    valid = false;
-  }
-
-  if (!captchaKey.value) {
-    errors.captcha = "CAPTCHA is not loaded.";
-    valid = false;
-  }
-
-  const invalidOnly =
-    selectedFiles.value.length > 0 &&
-    !selectedFiles.value.some((f) => !f.error);
-
-  if (invalidOnly) {
-    errors.attachments = "All selected files are invalid.";
-    valid = false;
-  }
-
-  return valid;
-}
-
-async function reloadCaptcha() {
-  try {
-    captchaLoading.value = true;
-    const data = await loadCaptcha();
-
-    // Support both { key, image } and { captcha_key, captcha_image_url }
-    captchaKey.value = data.key ?? data.captcha_key;
-    captchaImage.value = data.image ?? data.captcha_image_url;
-    captchaValue.value = "";
-    errors.captcha = null;
-  } catch (e) {
-    console.error(e);
-    errors.captcha = "Failed to load CAPTCHA.";
-    captchaImage.value = null;
-  } finally {
-    captchaLoading.value = false;
-  }
-}
-
-onMounted(() => {
-  reloadCaptcha();
-});
-
-function wrapWithTag(tag) {
-  const open = `[${tag}]`;
-  const close = `[/${tag}]`;
-
-  if (!form.text) {
-    form.text = `${open}${close}`;
-    return;
-  }
-
-  form.text += `${open}${close}`;
-}
-
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function applyPseudoTags(str) {
-  let safe = escapeHtml(str);
-
-  safe = safe.replace(/\[i](.+?)\[\/i]/gis, "<i>$1</i>");
-  safe = safe.replace(/\[strong](.+?)\[\/strong]/gis, "<strong>$1</strong>");
-  safe = safe.replace(/\[code](.+?)\[\/code]/gis, "<code>$1</code>");
-  safe = safe.replace(
-    /\[a(?:\s+href="([^"]*)")?](.+?)\[\/a]/gis,
-    (_, href, text) => {
-      const url = escapeHtml((href || text || "").trim());
-      const content = escapeHtml(text.trim());
-      if (!url) return content;
-      return `<a href="${url}" rel="nofollow noopener" target="_blank">${content}</a>`;
-    }
-  );
-
-  return safe;
-}
-
-const renderedPreview = computed(() => {
-  if (!form.text.trim()) return "<em>No text</em>";
-  return applyPseudoTags(form.text);
-});
-
-function togglePreview() {
-  showPreview.value = !showPreview.value;
-}
-
-function formatSize(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-async function onSubmit() {
-  if (!validateForm()) {
-    return;
-  }
-
-  submitting.value = true;
-
-  try {
-    const payload = {
-      user_name: form.user_name.trim(),
-      email: form.email.trim(),
-      homepage: form.homepage.trim() || null,
-      text: form.text,
-      captcha_key: captchaKey.value,
-      captcha_value: captchaValue.value.trim(),
+      errors: {},
     };
+  },
 
-    if (props.parentId) {
-      payload.parent = props.parentId;
+  mounted() {
+    this.syncAuth();
+
+    if (!this.hasJwt) {
+      this.loadCaptcha();
     }
 
-    const comment = await createComment(payload);
+    window.addEventListener("storage", this.onStorage);
+  },
 
-    const validFiles = selectedFiles.value.filter((f) => !f.error);
-    for (const f of validFiles) {
-      try {
-        await uploadAttachment(comment.id, f.file);
-      } catch (e) {
-        console.error("Failed to upload file:", f.file.name, e);
+  beforeUnmount() {
+    window.removeEventListener("storage", this.onStorage);
+  },
+
+  methods: {
+    onStorage(e) {
+      if (e && (e.key === "access" || e.key === "refresh")) {
+        this.syncAuth();
       }
-    }
+    },
 
-    form.user_name = "";
-    form.email = "";
-    form.homepage = "";
-    form.text = "";
-    captchaValue.value = "";
-    selectedFiles.value = [];
-    showPreview.value = false;
-    resetErrors();
+    syncAuth() {
+      this.hasJwt = !!getAccessToken();
 
-    emit("created", comment);
-    await reloadCaptcha();
-  } catch (e) {
-    console.error(e);
-    if (e && typeof e === "object") {
-      if (Array.isArray(e.captcha_value)) {
-        errors.captcha = e.captcha_value.join(" ");
-      } else if (Array.isArray(e.non_field_errors)) {
-        errors.captcha = e.non_field_errors.join(" ");
+      // HARD RESET for anonymous
+      if (!this.hasJwt) {
+        this.clearFiles();
+        this.form.captcha_key = this.form.captcha_key || "";
+        this.form.captcha_value = this.form.captcha_value || "";
       } else {
-        errors.captcha = "Failed to submit comment.";
+        // JWT: captcha not needed
+        this.form.captcha_key = "";
+        this.form.captcha_value = "";
       }
-    } else {
-      errors.captcha = "Failed to submit comment.";
-    }
-    await reloadCaptcha();
-  } finally {
-    submitting.value = false;
-  }
-}
+    },
+
+    clearFiles() {
+      this.selectedFiles = [];
+      const inp = this.$refs.fileInput;
+      if (inp) inp.value = "";
+    },
+
+    async loadCaptcha() {
+      this.captchaLoading = true;
+      this.errors.captcha_value = "";
+
+      try {
+        // endpoint in your backend: GET /api/comments/captcha/
+        const data = await apiGet("/api/comments/captcha/");
+        const key = data?.key || "";
+        const image = data?.image || "";
+
+        this.captcha.key = key;
+        this.captcha.image = this.resolveUrl(image);
+
+        this.form.captcha_key = key;
+        this.form.captcha_value = "";
+      } catch (e) {
+        this.errors.captcha_value = "Failed to load CAPTCHA.";
+      } finally {
+        this.captchaLoading = false;
+      }
+    },
+
+    resolveUrl(pathOrUrl) {
+      if (!pathOrUrl) return "";
+      if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) return pathOrUrl;
+      const p = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+      return `${window.location.protocol}//${window.location.host}${p}`;
+    },
+
+    insertTag(tag) {
+      const el = this.$refs.textRef;
+      if (!el) return;
+
+      const open = `[${tag}]`;
+      const close = `[/${tag}]`;
+
+      const start = el.selectionStart ?? 0;
+      const end = el.selectionEnd ?? 0;
+
+      const before = this.form.text.slice(0, start);
+      const selected = this.form.text.slice(start, end);
+      const after = this.form.text.slice(end);
+
+      this.form.text = `${before}${open}${selected}${close}${after}`;
+
+      this.$nextTick(() => {
+        el.focus();
+        const cursorPos = start + open.length + selected.length + close.length;
+        el.setSelectionRange(cursorPos, cursorPos);
+      });
+    },
+
+    onFilesSelected(e) {
+      // ✅ HARD GUARD: anonymous must never accept files
+      this.syncAuth();
+      if (!this.hasJwt) {
+        this.clearFiles();
+        return;
+      }
+
+      const files = Array.from(e?.target?.files || []);
+      this.selectedFiles = files.map((file) => ({
+        file,
+        error: this.validateFile(file),
+      }));
+    },
+
+    validateFile(file) {
+      const name = (file.name || "").toLowerCase();
+      const isTxt = name.endsWith(".txt");
+      const isImg =
+        name.endsWith(".jpg") ||
+        name.endsWith(".jpeg") ||
+        name.endsWith(".png") ||
+        name.endsWith(".gif") ||
+        name.endsWith(".webp");
+
+      if (!isTxt && !isImg) return "Only images (JPG/PNG/GIF/WEBP) or TXT are allowed.";
+      if (isTxt && file.size > 100 * 1024) return "TXT must be <= 100 KB.";
+      return null;
+    },
+
+    removeFile(idx) {
+      this.selectedFiles.splice(idx, 1);
+    },
+
+    formatBytes(bytes) {
+      if (!bytes) return "0 B";
+      const k = 1024;
+      const sizes = ["B", "KB", "MB", "GB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      const val = bytes / Math.pow(k, i);
+      return `${val.toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
+    },
+
+    mapApiErrors(err) {
+      const payload = err?.payload;
+      if (payload && typeof payload === "object") {
+        const out = {};
+        for (const [k, v] of Object.entries(payload)) {
+          out[k] = Array.isArray(v) ? v.join(" ") : String(v);
+        }
+        return out;
+      }
+      return { non_field: "Request failed." };
+    },
+
+    async onSubmit() {
+      this.errors = {};
+      this.syncAuth();
+
+      // ✅ HARD GUARD: anonymous must never upload files
+      if (!this.hasJwt) {
+        this.clearFiles();
+      }
+
+      // simple validation
+      if (!this.form.user_name) this.errors.user_name = "User Name is required.";
+      if (!this.form.email) this.errors.email = "Email is required.";
+      if (!this.form.text) this.errors.text = "Text is required.";
+
+      if (!this.hasJwt) {
+        if (!this.form.captcha_key || !this.form.captcha_value) {
+          this.errors.captcha_value = "CAPTCHA is required.";
+        }
+      }
+
+      if (Object.keys(this.errors).length) return;
+
+      this.submitting = true;
+
+      try {
+        const payload = {
+          user_name: this.form.user_name,
+          email: this.form.email,
+          homepage: this.form.homepage || null,
+          text: this.form.text,
+        };
+
+        if (this.parent_id) {
+          payload.parent = this.parent_id;
+        }
+
+        if (!this.hasJwt) {
+          payload.captcha_key = this.form.captcha_key;
+          payload.captcha_value = this.form.captcha_value;
+        }
+
+        const created = await createComment(payload);
+
+        // ✅ Upload attachments ONLY for JWT users
+        if (this.hasJwt && this.selectedFiles.length) {
+          const okFiles = this.selectedFiles.filter((f) => !f.error).map((f) => f.file);
+          for (const file of okFiles) {
+            await uploadAttachment(created.id, file);
+          }
+        }
+
+        // reset
+        this.form.text = "";
+        this.form.homepage = "";
+        this.clearFiles();
+
+        if (!this.hasJwt) {
+          await this.loadCaptcha();
+        }
+
+        this.$emit("created", created);
+      } catch (err) {
+        this.errors = this.mapApiErrors(err);
+
+        // refresh captcha after captcha-related errors
+        if (!this.hasJwt && (this.errors.captcha_value || this.errors.captcha_key)) {
+          await this.loadCaptcha();
+        }
+      } finally {
+        this.submitting = false;
+      }
+    },
+  },
+};
 </script>
 
 <style scoped>
 .comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   max-width: 720px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-}
-
-.form-title {
-  text-align: center;
-  font-size: 1.8rem;
-  margin-bottom: 1.5rem;
 }
 
 .form-group {
-  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .form-label {
-  display: block;
   font-weight: 600;
-  margin-bottom: 0.4rem;
 }
 
 .form-input,
 .form-textarea {
-  width: 100%;
+  border: 1px solid #d9d9d9;
   border-radius: 8px;
-  border: 1px solid #d4d4d8;
-  padding: 0.6rem 0.75rem;
-  font-size: 0.95rem;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
 }
 
 .form-textarea {
   resize: vertical;
 }
 
-.form-input.has-error,
-.form-textarea.has-error {
-  border-color: #ef4444;
-}
-
 .error-text {
-  color: #dc2626;
-  font-size: 0.85rem;
-  margin-top: 0.25rem;
-}
-
-.hint-text {
-  font-size: 0.8rem;
-  color: #6b7280;
-  margin-top: 0.35rem;
+  color: #e74c3c;
+  font-size: 13px;
 }
 
 .toolbar {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .toolbar-btn {
-  padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  font-size: 0.8rem;
+  border: 1px solid #d9d9d9;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
   cursor: pointer;
+  font-size: 13px;
 }
 
-.toolbar-btn:hover {
-  background: #e5f0ff;
+.files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.file-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.file-name {
+  font-weight: 600;
+}
+
+.file-size {
+  color: #777;
+  font-size: 13px;
+}
+
+.file-error {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-left: auto;
+}
+
+.file-remove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
 }
 
 .captcha-row {
   display: flex;
-  gap: 0.75rem;
+  gap: 12px;
   align-items: center;
-}
-
-.captcha-image-wrapper {
-  display: flex;
-  align-items: center;
-}
-
-.captcha-reload {
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  padding: 0.2rem;
-  background: #f9fafb;
-  cursor: pointer;
-  min-width: 96px;
-  min-height: 40px;
 }
 
 .captcha-image {
   display: block;
-  max-width: 120px;
-  max-height: 60px;
+  height: 48px;
+  width: auto;
+}
+
+.captcha-reload {
+  border: 1px solid #d9d9d9;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px;
+  cursor: pointer;
 }
 
 .captcha-input {
@@ -564,70 +517,20 @@ async function onSubmit() {
 
 .form-actions {
   display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  justify-content: flex-start;
 }
 
 .btn {
-  border-radius: 999px;
-  padding: 0.6rem 1.4rem;
-  font-weight: 600;
+  background: #111;
+  color: #fff;
   border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
   cursor: pointer;
 }
 
-.btn-primary {
-  background: #2563eb;
-  color: #ffffff;
-}
-
-.btn-primary:disabled {
+.btn:disabled {
   opacity: 0.6;
-  cursor: default;
-}
-
-.btn-secondary {
-  background: #f3f4f6;
-  color: #111827;
-}
-
-.preview-card {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border-radius: 12px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-}
-
-.preview-title {
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-}
-
-.preview-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem;
-  font-size: 0.9rem;
-  margin-bottom: 0.75rem;
-}
-
-.preview-text {
-  padding: 0.75rem;
-  border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  font-size: 0.95rem;
-}
-
-.files-list {
-  list-style: none;
-  padding-left: 0;
-  margin-top: 0.5rem;
-}
-
-.files-list-item {
-  font-size: 0.85rem;
+  cursor: not-allowed;
 }
 </style>

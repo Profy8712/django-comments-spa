@@ -27,11 +27,7 @@
       </div>
 
       <div v-else>
-        <!-- Root comments table -->
-        <table
-          v-if="currentComments.length"
-          class="comments-table"
-        >
+        <table v-if="currentComments.length" class="comments-table">
           <thead>
             <tr>
               <th>User Name</th>
@@ -40,10 +36,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="comment in currentComments"
-              :key="comment.id"
-            >
+            <tr v-for="comment in currentComments" :key="comment.id">
               <td>{{ comment.user_name }}</td>
               <td>{{ comment.email }}</td>
               <td>{{ formatDate(comment.created_at) }}</td>
@@ -51,7 +44,6 @@
           </tbody>
         </table>
 
-        <!-- Nested tree view -->
         <CommentTree
           v-if="currentComments.length"
           :comments="currentComments"
@@ -60,21 +52,12 @@
 
         <p v-else>No comments yet.</p>
 
-        <div
-          v-if="paginationEnabled"
-          class="pagination"
-        >
-          <button
-            :disabled="!comments.previous"
-            @click="changePage(-1)"
-          >
+        <div v-if="paginationEnabled" class="pagination">
+          <button :disabled="!comments.previous" @click="changePage(-1)">
             Prev
           </button>
           <span>Page {{ page }}</span>
-          <button
-            :disabled="!comments.next"
-            @click="changePage(1)"
-          >
+          <button :disabled="!comments.next" @click="changePage(1)">
             Next
           </button>
         </div>
@@ -86,11 +69,14 @@
 <script>
 import CommentForm from "./components/CommentForm.vue";
 import CommentTree from "./components/CommentTree.vue";
-import { fetchComments } from "./api";
+import { fetchComments } from "./api/comments";
 
 export default {
   name: "App",
-  components: { CommentForm, CommentTree },
+  components: {
+    CommentForm,
+    CommentTree,
+  },
   data() {
     return {
       comments: null,
@@ -124,6 +110,7 @@ export default {
         this.loading = false;
       }
     },
+
     async changePage(delta) {
       this.page += delta;
       if (this.page < 1) {
@@ -131,46 +118,50 @@ export default {
       }
       await this.loadComments();
     },
+
     async onOrderingChange() {
       this.page = 1;
       await this.loadComments();
     },
+
     async handleCreated() {
-      // Do not change the current page.
-      // Simply reload comments for the active page.
       await this.loadComments();
     },
+
     formatDate(value) {
       if (!value) return "";
       const date = new Date(value);
       return date.toLocaleString();
     },
+
     setupWebSocket() {
       const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-      const wsUrl = `${protocol}://127.0.0.1:8000/ws/comments/`;
+      const wsUrl = `${protocol}://${window.location.host}/ws/comments/`;
 
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
-        console.log("WebSocket connected");
+        console.log("WebSocket connected:", wsUrl);
       };
 
       this.ws.onmessage = async (event) => {
         try {
           const data = JSON.parse(event.data);
-
           if (data.type === "comment_created") {
-            // Do not reset the page; just refresh the current one.
             await this.loadComments();
           }
-        } catch (e) {
-          console.error("Failed to parse WebSocket message", e);
+        } catch (error) {
+          console.error("Failed to parse WebSocket message:", error);
         }
       };
 
       this.ws.onclose = () => {
         console.log("WebSocket disconnected");
         this.ws = null;
+      };
+
+      this.ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
       };
     },
   },
@@ -217,8 +208,6 @@ export default {
   align-items: center;
   gap: 0.5rem;
 }
-
-/* Root comments table */
 
 .comments-table {
   width: 100%;

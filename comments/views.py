@@ -47,7 +47,6 @@ class CommentListCreateView(generics.ListCreateAPIView):
         )
 
     def get_serializer_context(self):
-        # IMPORTANT: serializer needs request to detect JWT user and skip captcha
         ctx = super().get_serializer_context()
         ctx["request"] = self.request
         return ctx
@@ -98,7 +97,7 @@ class CaptchaAPIView(APIView):
 
 class AttachmentUploadView(generics.CreateAPIView):
     """
-    Upload attachments ONLY with JWT (recommended).
+    Upload attachments ONLY with JWT.
     """
     serializer_class = AttachmentCreateSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
