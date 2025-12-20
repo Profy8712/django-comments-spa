@@ -1,84 +1,142 @@
-// Base URL of the backend API and media server.
-// In Docker environment, replace with: "http://comments_backend:8000"
-export const BACKEND_URL = "http://127.0.0.1:8000";
+// frontend/src/api/index.js
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  `${window.location.protocol}//${window.location.host}`;
+
+export function getApiBase() {
+  return API_URL;
+}
 
 /**
- * Builds a full URL for API calls.
- * If the path already contains a protocol (http/https), it will be used as-is.
- * Otherwise it will be prefixed with BACKEND_URL.
+ * Build absolute URL:
+ * - absolute http(s) stays unchanged
+ * - adds leading "/" if missing
  */
-function buildUrl(path) {
+export function buildUrl(path) {
+  if (!path) return path;
+
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
-  return `${BACKEND_URL}${path}`;
+
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${API_URL}${p}`;
+}
+
+/** Token helpers */
+export function getAccessToken() {
+  const t = localStorage.getItem("access");
+  return t && t.trim() ? t.trim() : null;
+}
+
+export function clearTokens() {
+  localStorage.removeItem("access");
+  localStorage.removeItem("refresh");
 }
 
 /**
- * Sends a GET request to the backend API.
- * Throws an error if the request fails.
+ * Low-level request helper:
+ * - adds Authorization if token exists (and withAuth=true)
+ * - sends cookies (credentials include)
+ * - if server returns 401 -> clear tokens and retry once WITHOUT Authorization
  */
-export async function apiGet(path) {
+async function request(path, options = {}, { withAuth = true, retryOn401 = true } = {}) {
   const url = buildUrl(path);
 
-  const response = await fetch(url, {
-    credentials: "include",
-  });
+  const headers = new Headers(options.headers || {});
+  const token = withAuth ? getAccessToken() : null;
 
-  if (!response.ok) {
-    throw new Error(`GET ${url} failed with status ${response.status}`);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
-  return await response.json();
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
+
+  const res = await fetch(url, {
+    credentials: "include",
+    ...options,
+    headers,
+  });
+
+  if (res.status === 401 && retryOn401) {
+    // Token invalid/expired -> switch to anonymous and retry once
+    clearTokens();
+
+    const retryHeaders = new Headers(headers);
+    retryHeaders.delete("Authorization");
+
+    return fetch(url, {
+      credentials: "include",
+      ...options,
+      headers: retryHeaders,
+    });
+  }
+
+  return res;
 }
 
-/**
- * Sends a POST request with JSON payload.
- * Returns JSON or throws backend validation errors.
- */
-export async function apiPost(path, data) {
-  const url = buildUrl(path);
+async function readPayload(res) {
+  const ct = res.headers.get("content-type") || "";
+  const isJson = ct.includes("application/json");
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  if (isJson) {
+    const data = await res.json().catch(() => null);
+    return { data, text: null };
+  }
+
+  const text = await res.text().catch(() => "");
+  return { data: null, text };
+}
+
+function makeError(res, payload) {
+  const err = new Error(`HTTP ${res.status}`);
+  err.status = res.status;
+  err.payload = payload;
+  return err;
+}
+
+export async function apiGet(path, opts = {}) {
+  const res = await request(path, { method: "GET", ...opts }, { withAuth: true, retryOn401: true });
+  const payload = await readPayload(res);
+
+  if (!res.ok) throw makeError(res, payload.data ?? payload.text);
+  return payload.data ?? payload.text;
+}
+
+export async function apiPostJson(path, data, opts = {}) {
+  const res = await request(
+    path,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(opts.headers || {}),
+      },
+      body: JSON.stringify(data ?? {}),
+      ...opts,
     },
-    credentials: "include",
-    body: JSON.stringify(data),
-  });
+    { withAuth: true, retryOn401: true }
+  );
 
-  const payload = await response.json();
-
-  if (!response.ok) {
-    throw payload;
-  }
-
-  return payload;
+  const payload = await readPayload(res);
+  if (!res.ok) throw makeError(res, payload.data ?? payload.text);
+  return payload.data ?? payload.text;
 }
 
-/**
- * Fetch paginated and ordered comments.
- */
-export function fetchComments(page = 1, ordering = "-created_at") {
-  const params = new URLSearchParams({
-    page: String(page),
-    ordering,
-  });
+export async function apiPostForm(path, formData, opts = {}) {
+  // NOTE: do not set Content-Type for FormData (browser sets boundary)
+  const res = await request(
+    path,
+    {
+      method: "POST",
+      body: formData,
+      ...opts,
+    },
+    { withAuth: true, retryOn401: true }
+  );
 
-  return apiGet(`/api/comments/?${params.toString()}`);
-}
-
-/**
- * Fetch new CAPTCHA pair (key + image URL).
- */
-export function fetchCaptcha() {
-  return apiGet("/api/captcha/");
-}
-
-/**
- * Create a new comment via POST request.
- */
-export function createComment(data) {
-  return apiPost("/api/comments/", data);
+  const payload = await readPayload(res);
+  if (!res.ok) throw makeError(res, payload.data ?? payload.text);
+  return payload.data ?? payload.text;
 }

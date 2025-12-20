@@ -1,23 +1,27 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// frontend/src/api/captcha.js
 
+import { apiGet, buildUrl } from "./index";
+
+/**
+ * django-simple-captcha provides:
+ * GET /captcha/refresh/
+ * returns JSON like:
+ * {
+ *   "key": "...",
+ *   "image_url": "/captcha/image/<hash>/"
+ * }
+ */
 export async function loadCaptcha() {
-  const resp = await fetch(`${API_URL}/api/captcha/`, {
-    credentials: "include",
-  });
+  const data = await apiGet("/api/comments/captcha/");
 
-  if (!resp.ok) {
-    throw new Error("Failed to load CAPTCHA");
-  }
-
-  const data = await resp.json(); // { key, image }
-
-  let imageUrl = data.image;
-  if (imageUrl.startsWith("/")) {
-    imageUrl = `${API_URL}${imageUrl}`;
-  }
+  const key = data?.key || null;
+  const imagePath = data?.image_url || data?.image || null; // fallback just in case
+  const imageUrl = buildUrl(imagePath);
 
   return {
-    key: data.key,
-    image: imageUrl,
+    key,
+    image: imageUrl
+      ? `${imageUrl}${imageUrl.includes("?") ? "&" : "?"}t=${Date.now()}`
+      : null,
   };
 }

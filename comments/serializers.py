@@ -88,10 +88,10 @@ class CommentSerializer(serializers.ModelSerializer):
         - Authenticated (JWT) -> CAPTCHA not required
         """
         request = self.context.get("request")
-        is_auth = bool(request and request.user and request.user.is_authenticated)
+        user = getattr(request, "user", None)
+        is_auth = bool(user and user.is_authenticated)
 
         if is_auth:
-            # JWT user: skip captcha
             attrs.pop("captcha_key", None)
             attrs.pop("captcha_value", None)
             return attrs

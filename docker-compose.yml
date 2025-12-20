@@ -3,6 +3,8 @@ services:
     image: postgres:16-alpine
     container_name: comments_db
     restart: unless-stopped
+    env_file:
+      - .env.local
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-comments_db}
       POSTGRES_USER: ${POSTGRES_USER:-comments_user}
@@ -29,6 +31,8 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: comments_rabbitmq
     restart: unless-stopped
+    env_file:
+      - .env.local
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
@@ -80,6 +84,8 @@ services:
       dockerfile: Dockerfile.backend
     container_name: comments_backend
     restart: unless-stopped
+    env_file:
+      - .env.local
     depends_on:
       db:
         condition: service_healthy
@@ -87,21 +93,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    # ⬇️ ВАЖНО: env-based settings
-    environment:
-      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-core.settings.local}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-unsafe-dev-key}
-      DJANGO_DEBUG: ${DJANGO_DEBUG:-1}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
-      POSTGRES_DB: ${POSTGRES_DB:-comments_db}
-      POSTGRES_USER: ${POSTGRES_USER:-comments_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-comments_pass}
-      POSTGRES_HOST: ${POSTGRES_HOST:-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
       - .:/app
       - ./media:/app/media
@@ -120,6 +111,8 @@ services:
       dockerfile: Dockerfile.backend
     container_name: comments_celery
     restart: unless-stopped
+    env_file:
+      - .env.local
     depends_on:
       backend:
         condition: service_started
@@ -129,18 +122,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    # ⬇️ ВАЖНО: env-based settings
-    environment:
-      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-core.settings.local}
-      POSTGRES_DB: ${POSTGRES_DB:-comments_db}
-      POSTGRES_USER: ${POSTGRES_USER:-comments_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-comments_pass}
-      POSTGRES_HOST: ${POSTGRES_HOST:-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
       - .:/app
       - ./media:/app/media
@@ -155,6 +136,8 @@ services:
       dockerfile: Dockerfile.backend
     container_name: comments_celery_beat
     restart: unless-stopped
+    env_file:
+      - .env.local
     depends_on:
       backend:
         condition: service_started
@@ -164,18 +147,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    # ⬇️ ВАЖНО: env-based settings
-    environment:
-      DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-core.settings.local}
-      POSTGRES_DB: ${POSTGRES_DB:-comments_db}
-      POSTGRES_USER: ${POSTGRES_USER:-comments_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-comments_pass}
-      POSTGRES_HOST: ${POSTGRES_HOST:-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      REDIS_HOST: ${REDIS_HOST:-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
     volumes:
       - .:/app
     command: >

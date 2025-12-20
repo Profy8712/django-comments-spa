@@ -9,10 +9,11 @@ from .views import (
 )
 
 urlpatterns = [
-    path("comments/", CommentListCreateView.as_view(), name="comment-list-create"),
-    path("comments/<int:pk>/", CommentDetailView.as_view(), name="comment-detail"),
-    path("comments/<int:pk>/upload/", AttachmentUploadView.as_view(), name="comment-upload"),
+    path("", CommentListCreateView.as_view(), name="comment-list-create"),
+    path("<int:pk>/", CommentDetailView.as_view(), name="comment-detail"),
+    path("<int:pk>/upload/", AttachmentUploadView.as_view(), name="comment-upload"),
 
+    # captcha endpoint is inside /api/comments/
     path("captcha/", CaptchaAPIView.as_view(), name="captcha"),
-    path("search/comments/", CommentSearchAPIView.as_view(), name="comment-search"),
+    path("search/", CommentSearchAPIView.as_view(), name="comment-search"),
 ]
