@@ -70,6 +70,28 @@ jobs:
 
       - name: Healthcheck
         run: |
-          curl -fsS https://comments-spa-t.duckdns.org/ >/dev/null
-          curl -fsS https://comments-spa-t.duckdns.org/api/comments/captcha/ >/dev/null
-          echo "Healthcheck OK"
+          set -e
+
+          echo "Wait for frontend..."
+          for i in {1..20}; do
+            if curl -fsS https://comments-spa-t.duckdns.org/ >/dev/null; then
+              echo "Frontend OK"
+              break
+            fi
+            echo "Frontend not ready yet ($i/20)..."
+            sleep 3
+          done
+
+          echo "Wait for API captcha..."
+          for i in {1..20}; do
+            if curl -fsS https://comments-spa-t.duckdns.org/api/comments/captcha/ >/dev/null; then
+              echo "API OK"
+              echo "Healthcheck OK"
+              exit 0
+            fi
+            echo "API not ready yet ($i/20)..."
+            sleep 3
+          done
+
+          echo "Healthcheck FAILED"
+          exit 1
