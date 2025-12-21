@@ -1,10 +1,13 @@
 version: "3.9"
 
 services:
+  # PostgreSQL database
   db:
     image: postgres:16-alpine
     container_name: comments_db
     restart: unless-stopped
+    env_file:
+      - .env.prod
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -17,6 +20,7 @@ services:
       timeout: 5s
       retries: 10
 
+  # Redis (cache + channels layer)
   redis:
     image: redis:7-alpine
     container_name: comments_redis
@@ -27,21 +31,24 @@ services:
       timeout: 3s
       retries: 20
 
+  # RabbitMQ (Celery broker)
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: comments_rabbitmq
     restart: unless-stopped
+    env_file:
+      - .env.prod
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
-    ports:
-      - "${RABBITMQ_UI_PORT}:15672"
+    # Management UI is NOT exposed in production
     healthcheck:
       test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
       interval: 5s
       timeout: 5s
       retries: 20
 
+  # Django backend (ASGI via Daphne)
   backend:
     build:
       context: .
@@ -49,7 +56,7 @@ services:
     container_name: comments_backend
     restart: unless-stopped
     env_file:
-      - .env.local
+      - .env.prod
     depends_on:
       db:
         condition: service_healthy
@@ -60,8 +67,10 @@ services:
     volumes:
       - .:/app
       - ./media:/app/media
+      - ./staticfiles:/app/staticfiles
+    # Backend is exposed only to localhost (used by Nginx)
     ports:
-      - "${BACKEND_PORT}:8000"
+      - "127.0.0.1:8000:8000"
     command: >
       sh -c "
       python manage.py migrate &&
@@ -69,6 +78,7 @@ services:
       daphne -b 0.0.0.0 -p 8000 core.asgi:application
       "
 
+  # Celery worker
   celery:
     build:
       context: .
@@ -76,7 +86,7 @@ services:
     container_name: comments_celery
     restart: unless-stopped
     env_file:
-      - .env.local
+      - .env.prod
     depends_on:
       backend:
         condition: service_started
@@ -90,6 +100,7 @@ services:
       - .:/app
     command: celery -A core worker -l info
 
+  # Celery beat scheduler
   celery_beat:
     build:
       context: .
@@ -97,7 +108,7 @@ services:
     container_name: comments_celery_beat
     restart: unless-stopped
     env_file:
-      - .env.local
+      - .env.prod
     depends_on:
       backend:
         condition: service_started
@@ -111,17 +122,6 @@ services:
       - .:/app
     command: celery -A core beat -l info
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: comments_frontend
-    restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_started
-    ports:
-      - "${FRONTEND_PORT}:5173"
-
 volumes:
+  # Persistent PostgreSQL data
   postgres_data:
