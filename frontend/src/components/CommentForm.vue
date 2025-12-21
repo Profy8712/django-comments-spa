@@ -8,8 +8,11 @@
         v-model.trim="form.user_name"
         type="text"
         placeholder="Your name"
-        :disabled="submitting"
+        :disabled="submitting || hasJwt"
       />
+      <p v-if="hasJwt" class="hint-text">
+        You are authenticated — name/email can be taken from your session.
+      </p>
       <p v-if="errors.user_name" class="error-text">{{ errors.user_name }}</p>
     </div>
 
@@ -20,7 +23,7 @@
         v-model.trim="form.email"
         type="email"
         placeholder="your@email.com"
-        :disabled="submitting"
+        :disabled="submitting || hasJwt"
       />
       <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
     </div>
@@ -76,7 +79,6 @@
         Attachments are available only for logged-in users.
       </p>
 
-      <!-- show selected files only for JWT users -->
       <div v-if="hasJwt && selectedFiles.length" class="files-list">
         <div v-for="(f, idx) in selectedFiles" :key="idx" class="file-item">
           <span class="file-name">{{ f.file.name }}</span>
@@ -156,7 +158,6 @@ export default {
       submitting: false,
       captchaLoading: false,
 
-      // reactive auth state
       hasJwt: false,
 
       captcha: { key: "", image: "" },
@@ -188,10 +189,10 @@ export default {
       this.loadCaptcha();
     }
 
-    // 1) works for other tabs/windows (not same tab)
+    // only works for other tabs/windows
     window.addEventListener("storage", this._onStorageBound);
 
-    // 2) works for same tab: dispatch this event after saving tokens
+    // works for same tab (we dispatch it after saving tokens)
     window.addEventListener("auth-changed", this._onAuthChangedBound);
   },
 
@@ -204,22 +205,36 @@ export default {
     onStorage(e) {
       // Fires ONLY when localStorage changes in ANOTHER tab
       if (e && (e.key === "access" || e.key === "refresh")) {
-        this.syncAuth();
+        this.onAuthChanged();
       }
     },
 
     onAuthChanged() {
-      // Fires in SAME tab when we dispatch custom event
       const wasAuthed = this.hasJwt;
       this.syncAuth();
 
-      // If we just became authed, hide captcha errors, etc.
+      // anonymous -> authenticated
       if (!wasAuthed && this.hasJwt) {
+        // Avoid inconsistency: now identity comes from JWT
+        this.form.user_name = "";
+        this.form.email = "";
+
+        // captcha no longer needed
+        this.captcha = { key: "", image: "" };
+        this.form.captcha_key = "";
+        this.form.captcha_value = "";
         this.errors.captcha_value = "";
+
+        // optional: clear generic errors on auth switch
+        this.errors = {};
       }
 
-      // If we just became anonymous, ensure captcha exists
+      // authenticated -> anonymous
       if (wasAuthed && !this.hasJwt) {
+        // attachments not allowed for anonymous
+        this.clearFiles();
+
+        // captcha required again
         this.loadCaptcha();
       }
     },
@@ -228,11 +243,10 @@ export default {
       this.hasJwt = !!getAccessToken();
 
       if (!this.hasJwt) {
-        // anonymous -> captcha required, files forbidden
-        this.clearFiles();
+        // anonymous
         // keep captcha fields (will be filled by loadCaptcha)
       } else {
-        // JWT -> captcha not needed
+        // authed: captcha not needed
         this.form.captcha_key = "";
         this.form.captcha_value = "";
       }
@@ -249,10 +263,8 @@ export default {
       this.errors.captcha_value = "";
 
       try {
-        // endpoint in your backend: GET /api/comments/captcha/
         const data = await apiGet("/api/comments/captcha/");
         const key = data?.key || "";
-        // your backend may return "image" or "image_url" - handle both
         const img = data?.image || data?.image_url || "";
 
         this.captcha.key = key;
@@ -298,7 +310,6 @@ export default {
     },
 
     onFilesSelected(e) {
-      // HARD GUARD: anonymous must never accept files
       this.syncAuth();
       if (!this.hasJwt) {
         this.clearFiles();
@@ -356,14 +367,15 @@ export default {
       this.errors = {};
       this.syncAuth();
 
-      // HARD GUARD: anonymous must never upload files
+      // basic validation
       if (!this.hasJwt) {
-        this.clearFiles();
+        if (!this.form.user_name) this.errors.user_name = "User Name is required.";
+        if (!this.form.email) this.errors.email = "Email is required.";
+      } else {
+        // authed: allow empty name/email (identity from JWT)
+        // if you still REQUIRE them in backend, remove this block
       }
 
-      // simple validation
-      if (!this.form.user_name) this.errors.user_name = "User Name is required.";
-      if (!this.form.email) this.errors.email = "Email is required.";
       if (!this.form.text) this.errors.text = "Text is required.";
 
       if (!this.hasJwt) {
@@ -384,9 +396,7 @@ export default {
           text: this.form.text,
         };
 
-        if (this.parent_id) {
-          payload.parent = this.parent_id;
-        }
+        if (this.parent_id) payload.parent = this.parent_id;
 
         if (!this.hasJwt) {
           payload.captcha_key = this.form.captcha_key;
@@ -403,7 +413,7 @@ export default {
           }
         }
 
-        // reset
+        // reset after success
         this.form.text = "";
         this.form.homepage = "";
         this.clearFiles();
@@ -416,7 +426,6 @@ export default {
       } catch (err) {
         this.errors = this.mapApiErrors(err);
 
-        // refresh captcha after captcha-related errors
         if (!this.hasJwt && (this.errors.captcha_value || this.errors.captcha_key)) {
           await this.loadCaptcha();
         }
@@ -461,6 +470,11 @@ export default {
 
 .error-text {
   color: #e74c3c;
+  font-size: 13px;
+}
+
+.hint-text {
+  color: #666;
   font-size: 13px;
 }
 
