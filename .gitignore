@@ -66,3 +66,8 @@ venv/Lib
 db.sqlite3
 NUL
 celerybeat-schedule
+
+# SSH / deploy
+gha_deploy_key
+gha_deploy_key.pub
+known_hosts
