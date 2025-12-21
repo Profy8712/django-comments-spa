@@ -7,9 +7,26 @@ from .models import Attachment, Comment
 
 
 class AttachmentSerializer(serializers.ModelSerializer):
+    # IMPORTANT: keep field name "file" for frontend compatibility
+    file = serializers.SerializerMethodField()
+
     class Meta:
         model = Attachment
         fields = ("id", "file", "uploaded_at")
+
+    def get_file(self, obj) -> str | None:
+        """
+        Return RELATIVE URL like "/media/attachments/...".
+        This works:
+        - locally with Vite proxy (/media -> backend)
+        - in production behind nginx (/media served by nginx)
+        """
+        if not obj.file:
+            return None
+        try:
+            return obj.file.url
+        except Exception:
+            return None
 
 
 class AttachmentCreateSerializer(serializers.ModelSerializer):

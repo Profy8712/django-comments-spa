@@ -156,7 +156,7 @@ export default {
       submitting: false,
       captchaLoading: false,
 
-      // non-reactive storage -> keep reactive state here
+      // reactive auth state
       hasJwt: false,
 
       captcha: { key: "", image: "" },
@@ -178,36 +178,61 @@ export default {
   },
 
   mounted() {
+    // bind once so removeEventListener works
+    this._onStorageBound = (e) => this.onStorage(e);
+    this._onAuthChangedBound = () => this.onAuthChanged();
+
     this.syncAuth();
 
     if (!this.hasJwt) {
       this.loadCaptcha();
     }
 
-    window.addEventListener("storage", this.onStorage);
+    // 1) works for other tabs/windows (not same tab)
+    window.addEventListener("storage", this._onStorageBound);
+
+    // 2) works for same tab: dispatch this event after saving tokens
+    window.addEventListener("auth-changed", this._onAuthChangedBound);
   },
 
   beforeUnmount() {
-    window.removeEventListener("storage", this.onStorage);
+    window.removeEventListener("storage", this._onStorageBound);
+    window.removeEventListener("auth-changed", this._onAuthChangedBound);
   },
 
   methods: {
     onStorage(e) {
+      // Fires ONLY when localStorage changes in ANOTHER tab
       if (e && (e.key === "access" || e.key === "refresh")) {
         this.syncAuth();
+      }
+    },
+
+    onAuthChanged() {
+      // Fires in SAME tab when we dispatch custom event
+      const wasAuthed = this.hasJwt;
+      this.syncAuth();
+
+      // If we just became authed, hide captcha errors, etc.
+      if (!wasAuthed && this.hasJwt) {
+        this.errors.captcha_value = "";
+      }
+
+      // If we just became anonymous, ensure captcha exists
+      if (wasAuthed && !this.hasJwt) {
+        this.loadCaptcha();
       }
     },
 
     syncAuth() {
       this.hasJwt = !!getAccessToken();
 
-      // HARD RESET for anonymous
       if (!this.hasJwt) {
+        // anonymous -> captcha required, files forbidden
         this.clearFiles();
-        this.form.captcha_key = this.form.captcha_key || "";
-        this.form.captcha_value = this.form.captcha_value || "";
+        // keep captcha fields (will be filled by loadCaptcha)
       } else {
-        // JWT: captcha not needed
+        // JWT -> captcha not needed
         this.form.captcha_key = "";
         this.form.captcha_value = "";
       }
@@ -227,10 +252,11 @@ export default {
         // endpoint in your backend: GET /api/comments/captcha/
         const data = await apiGet("/api/comments/captcha/");
         const key = data?.key || "";
-        const image = data?.image || "";
+        // your backend may return "image" or "image_url" - handle both
+        const img = data?.image || data?.image_url || "";
 
         this.captcha.key = key;
-        this.captcha.image = this.resolveUrl(image);
+        this.captcha.image = this.resolveUrl(img);
 
         this.form.captcha_key = key;
         this.form.captcha_value = "";
@@ -272,7 +298,7 @@ export default {
     },
 
     onFilesSelected(e) {
-      // ✅ HARD GUARD: anonymous must never accept files
+      // HARD GUARD: anonymous must never accept files
       this.syncAuth();
       if (!this.hasJwt) {
         this.clearFiles();
@@ -330,7 +356,7 @@ export default {
       this.errors = {};
       this.syncAuth();
 
-      // ✅ HARD GUARD: anonymous must never upload files
+      // HARD GUARD: anonymous must never upload files
       if (!this.hasJwt) {
         this.clearFiles();
       }
@@ -369,7 +395,7 @@ export default {
 
         const created = await createComment(payload);
 
-        // ✅ Upload attachments ONLY for JWT users
+        // Upload attachments ONLY for JWT users
         if (this.hasJwt && this.selectedFiles.length) {
           const okFiles = this.selectedFiles.filter((f) => !f.error).map((f) => f.file);
           for (const file of okFiles) {
