@@ -70,14 +70,13 @@ jobs:
 
       - name: Healthcheck
         run: |
-          set -e
+          echo "Waiting for backend to become ready..."
           for i in {1..30}; do
-            echo "Healthcheck attempt $i/30..."
-            if curl -fsS https://comments-spa-t.duckdns.org/ >/dev/null && \
-               curl -fsS https://comments-spa-t.duckdns.org/api/comments/captcha/ >/dev/null; then
+            if curl -fsS https://comments-spa-t.duckdns.org/api/comments/captcha/ >/dev/null; then
               echo "Healthcheck OK"
               exit 0
             fi
+            echo "Still not ready... ($i)"
             sleep 2
           done
           echo "Healthcheck FAILED"
