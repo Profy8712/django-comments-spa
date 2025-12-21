@@ -2,7 +2,8 @@ from .base import *
 
 DEBUG = True
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default=["localhost","127.0.0.1"])
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+
 
 # Local обычно без HTTPS-прокси
 SECURE_SSL_REDIRECT = False
