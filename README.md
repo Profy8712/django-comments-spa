@@ -682,14 +682,51 @@ Implemented features:
 Kibana dashboards demonstrate system observability
 and scalability readiness.
 
+
+## 🧾 OpenAPI Schema & Swagger Documentation
+
+The project exposes a **machine-readable OpenAPI schema** and an
+**interactive Swagger UI** describing all API endpoints, serializers,
+request/response structures, authentication methods, and error formats.
+
+This documentation can be used for:
+
+- API client generation
+- integration with external systems
+- automated testing
+- API validation and versioning
+- interactive API exploration and debugging
+
+---
+
+### 🔗 Documentation Endpoints
+
+#### Swagger UI (Interactive)
+
+**Production:**
+
+```text
+https://comments-spa-t.duckdns.org/api/docs/
+https://comments-spa-t.duckdns.org/api/schema/
+```
+---
 ## 👤 Author
 
 **Oleksandr Kurin**  
 Python Backend Developer
 
 **Tech stack:**
-Django • DRF • Celery • Redis • RabbitMQ • PostgreSQL  
-Docker • Nginx • AWS • WebSockets • Vue 3
+- Django
+- Django REST Framework
+- Celery
+- Redis
+- RabbitMQ
+- PostgreSQL
+- Docker
+- Nginx
+- AWS
+- WebSockets
+- Vue 3
 
 ---
 
