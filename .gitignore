@@ -71,3 +71,5 @@ celerybeat-schedule
 gha_deploy_key
 gha_deploy_key.pub
 known_hosts
+__pycache__/
+*.pyc
