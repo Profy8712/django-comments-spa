@@ -427,7 +427,7 @@ The application is available via a public domain name.
 ### Frontend (SPA)
 
 ```text
-https://comments-spa-test.duckdns.org/
+https://comments-spa-t.duckdns.org/
 ```
 
 ---
@@ -435,7 +435,7 @@ https://comments-spa-test.duckdns.org/
 ### Backend API
 
 ```text
-https://comments-spa-test.duckdns.org/api/
+https://comments-spa-t.duckdns.org/api/
 ```
 
 ---
@@ -445,7 +445,7 @@ https://comments-spa-test.duckdns.org/api/
 Public endpoint for listing and creating comments.
 
 ```text
-https://comments-spa-test.duckdns.org/api/comments/
+https://comments-spa-t.duckdns.org/api/comments/
 ```
 
 - `GET` — list comments (public)
@@ -458,7 +458,7 @@ https://comments-spa-test.duckdns.org/api/comments/
 ### CAPTCHA Endpoint
 
 ```text
-https://comments-spa-test.duckdns.org/captcha/
+https://comments-spa-t.duckdns.org/captcha/
 ```
 
 ---
@@ -466,7 +466,7 @@ https://comments-spa-test.duckdns.org/captcha/
 ### WebSocket Endpoint
 
 ```text
-wss://comments-spa-test.duckdns.org/ws/comments/
+wss://comments-spa-t.duckdns.org/ws/comments/
 ```
 
 ---
@@ -476,7 +476,7 @@ wss://comments-spa-test.duckdns.org/ws/comments/
 Used to obtain **access** and **refresh** tokens.
 
 ```yaml
-POST https://comments-spa-test.duckdns.org/api/auth/token/
+POST https://comments-spa-t.duckdns.org/api/auth/token/
 ```
 
 **Request body (JSON):**
@@ -549,7 +549,7 @@ To authenticate and enable authorized features:
 3. Execute the following command:
 
 ```js
-fetch("https://comments-spa-test.duckdns.org/api/auth/token/", {
+fetch("https://comments-spa-t.duckdns.org/api/auth/token/", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -591,6 +591,63 @@ After logout:
 - The application works in anonymous mode
 
 ---
+## 🚀 CI/CD (GitHub Actions)
+
+This project uses **GitHub Actions** to run CI checks and automatically deploy to **AWS EC2**.
+
+---
+
+### ✅ CI (Continuous Integration)
+
+CI runs on every **push** and **pull request** to `main` and includes:
+
+- Backend checks:
+  - `python manage.py check`
+- Frontend build:
+  - `npm run build`
+
+---
+
+### 🚚 CD (Continuous Deployment)
+
+CD runs on **push to `main`** (after CI succeeds) and performs the following steps:
+
+- connects to the AWS EC2 instance via **SSH**
+- pulls the latest `main` branch
+- rebuilds and restarts Docker containers
+- runs database migrations
+- collects static files
+- verifies deployment via healthcheck
+
+Deployment is executed by:
+
+```text
+/home/ubuntu/django-comments-spa/deploy.sh
+```
+📄 Workflow file
+.github/workflows/ci-cd.yml
+
+🔐 Required GitHub Secrets
+
+Add these secrets in:
+
+GitHub Repo → Settings → Secrets and variables → Actions
+
+EC2_HOST         # Public IP or domain of EC2
+EC2_USER         # Usually: ubuntu
+EC2_SSH_KEY      # Private SSH key for deployment (ed25519)
+EC2_PROJECT_DIR  # /home/ubuntu/django-comments-spa
+
+✅ Healthcheck URLs
+
+CD verifies that the application is live using:
+
+https://comments-spa-t.duckdns.org/
+https://comments-spa-t.duckdns.org/api/comments/captcha/
+
+You can check pipeline runs in:
+GitHub → Actions
+
 
 ## 📊 Database Schema
 
