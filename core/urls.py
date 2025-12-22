@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
@@ -14,6 +15,8 @@ def api_root(request):
     """
     return JsonResponse(
         {
+            "docs": "/api/docs/",
+            "schema": "/api/schema/",
             "comments": "/api/comments/",
             "captcha": "/api/comments/captcha/",
             "auth_token": "/api/auth/token/",
@@ -27,6 +30,10 @@ def api_root(request):
 urlpatterns = [
     # Admin
     path("admin/", admin.site.urls),
+
+    # Swagger/OpenAPI
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
 
     # API root
     path("api/", api_root, name="api-root"),
@@ -43,6 +50,6 @@ urlpatterns = [
     path("captcha/", include("captcha.urls")),
 ]
 
-# Media (local/dev only)
+# Media (local/dev only). In production usually served by nginx.
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

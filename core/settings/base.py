@@ -48,9 +48,8 @@ ALLOWED_HOSTS = env_list(
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Cookies defaults (can be overridden in local/production)
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = False  # SPA обычно не читает csrf cookie, но оставим как есть
+CSRF_COOKIE_HTTPONLY = False
 
 
 # -----------------------------------------------------------------------------
@@ -69,6 +68,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
+    "drf_spectacular",
     "captcha",
     "channels",
     "django_extensions",
@@ -81,7 +81,6 @@ INSTALLED_APPS = [
 # Elasticsearch toggle (important for AWS)
 ELASTICSEARCH_ENABLED = env_bool("ELASTICSEARCH_ENABLED", "1")
 if ELASTICSEARCH_ENABLED:
-    # IMPORTANT: this package must exist in requirements when enabled
     INSTALLED_APPS += ["django_elasticsearch_dsl"]
 
 
@@ -110,7 +109,7 @@ ROOT_URLCONF = "core.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],  # если нужно: [BASE_DIR / "templates"]
+        "DIRS": [],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -176,7 +175,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # -----------------------------------------------------------------------------
-# DRF + JWT
+# DRF + JWT + OpenAPI (Swagger)
 # -----------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -185,6 +184,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.AllowAny",
     ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": env_int("DRF_PAGE_SIZE", "25"),
 }
@@ -193,6 +193,28 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env_int("JWT_ACCESS_MINUTES", "60")),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=env_int("JWT_REFRESH_DAYS", "7")),
     "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Comments SPA API",
+    "DESCRIPTION": "API documentation for Django Comments SPA",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # Optional: show authentication in Swagger
+    "SECURITY": [{"bearerAuth": []}],
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+    },
+    "APPEND_COMPONENTS": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT",
+            }
+        }
+    },
 }
 
 
@@ -256,9 +278,6 @@ CELERY_TIMEZONE = os.getenv("CELERY_TIMEZONE", TIME_ZONE)
 # -----------------------------------------------------------------------------
 # Elasticsearch (optional)
 # -----------------------------------------------------------------------------
-# IMPORTANT:
-# - If ELASTICSEARCH_ENABLED=0 -> no django_elasticsearch_dsl app, no settings required.
-# - Your code should also avoid importing ES stuff when disabled.
 if ELASTICSEARCH_ENABLED:
     ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
     ELASTICSEARCH_DSL = {"default": {"hosts": ELASTICSEARCH_HOST}}
