@@ -71,8 +71,13 @@ jobs:
       - name: Healthcheck
         run: |
           echo "Waiting for backend..."
-          sleep 15
-
-          curl -fsS https://comments-spa-t.duckdns.org/api/comments/captcha/ >/dev/null
-
-          echo "Healthcheck OK"
+          for i in {1..30}; do
+            if curl -fs https://comments-spa-t.duckdns.org/api/ >/dev/null; then
+              echo "Backend is healthy"
+              exit 0
+            fi
+            echo "Still waiting..."
+            sleep 5
+          done
+          echo "Backend did not become healthy in time"
+          exit 1
