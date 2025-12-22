@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict i8nHtG27rE036UWAllfYJwDDq5LjH2p5G5SWgdHMSftHNgrMrNNpBmQ46oNjS3r
+\restrict la9ZAXZHtMJDoh5D9joarVSZzrZSsPbyTqjc0VgudQa7PFbneeZguonQaLnsusu
 
 -- Dumped from database version 16.11
 -- Dumped by pg_dump version 16.11
@@ -753,5 +753,5 @@ ALTER TABLE ONLY public.django_admin_log
 -- PostgreSQL database dump complete
 --
 
-\unrestrict i8nHtG27rE036UWAllfYJwDDq5LjH2p5G5SWgdHMSftHNgrMrNNpBmQ46oNjS3r
+\unrestrict la9ZAXZHtMJDoh5D9joarVSZzrZSsPbyTqjc0VgudQa7PFbneeZguonQaLnsusu
 
