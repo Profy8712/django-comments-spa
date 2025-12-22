@@ -99,19 +99,15 @@ jobs:
           EOF
 
       - name: Healthcheck
-        shell: bash
         run: |
-          set -euo pipefail
-
           echo "Waiting for backend..."
           for i in {1..30}; do
-            if curl -fs https://comments-spa-t.duckdns.org/api/ >/dev/null; then
+            if curl -fs https://comments-spa-t.duckdns.org/api/comments/ >/dev/null; then
               echo "Backend is healthy"
               exit 0
             fi
             echo "Still waiting... ($i/30)"
             sleep 5
           done
-
           echo "Backend did not become healthy in time"
           exit 1

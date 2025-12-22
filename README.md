@@ -2,7 +2,7 @@
 
 A **production‑style Single Page Application (SPA)** for managing **hierarchical comments**, built with a strong focus on **backend architecture**, **security**, **scalability**, and **real‑world deployment practices**.
 
-This project demonstrates a **Middle+/Senior‑level Django backend solution** combined with a modern SPA frontend and a realistic Docker‑based deployment on AWS EC2.
+This project demonstrates  Django backend solution** combined with a modern SPA frontend and a realistic Docker‑based deployment on AWS EC2.
 
 ---
 
@@ -667,6 +667,20 @@ The file can be opened in **MySQL Workbench** to review:
 > as a universal schema viewer for review purposes.
 
 ---
+### 📊 Elasticsearch & Kibana
+
+The project integrates Elasticsearch for full-text search
+and Kibana for analytics and monitoring.
+
+Implemented features:
+- Comments indexing
+- Real-time analytics dashboards
+- Activity monitoring (comments per day/hour)
+- User behavior analysis
+- Attachment statistics
+
+Kibana dashboards demonstrate system observability
+and scalability readiness.
 
 ## 👤 Author
 
