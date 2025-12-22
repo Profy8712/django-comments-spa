@@ -667,7 +667,7 @@ The file can be opened in **MySQL Workbench** to review:
 > as a universal schema viewer for review purposes.
 
 ---
-### 📊 Elasticsearch & Kibana
+## 📊 Elasticsearch & Kibana
 
 The project integrates Elasticsearch for full-text search
 and Kibana for analytics and monitoring.
@@ -682,6 +682,27 @@ Implemented features:
 Kibana dashboards demonstrate system observability
 and scalability readiness.
 
+### 🔗 Access URLs
+
+**Production (if enabled):**
+
+- Kibana:  
+  `https://comments-spa-t.duckdns.org/kibana/`  
+  *(or via SSH tunnel / internal access, depending on deployment)*
+
+- Elasticsearch (internal service):  
+  `http://elasticsearch:9200`
+
+**Local environment:**
+
+- Kibana:  
+  `http://localhost:5601`
+
+- Elasticsearch:  
+  `http://localhost:9200`
+
+This integration shows how the application can evolve
+from a simple CRUD system into a **search- and analytics-driven platform**.
 
 ## 🧾 OpenAPI Schema & Swagger Documentation
 
