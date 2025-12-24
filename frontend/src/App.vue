@@ -3,7 +3,7 @@
     <header class="top">
       <div class="brand">
         <div class="title">Comments SPA</div>
-        <div class="subtitle">Django + Vue • JWT • WebSocket • Attachments • CAPTCHA</div>
+         <!-- subtitle removed -->
       </div>
     </header>
 
