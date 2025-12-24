@@ -7,6 +7,7 @@
         <div class="auth-status" :class="{ on: authed }">
           <span class="dot" />
           <span>{{ authed ? "Authorized" : "Anonymous" }}</span>
+          <span v-if="me && (me.is_staff || me.is_superuser)" class="admin-badge">ADMIN</span>
         </div>
       </div>
 
@@ -65,6 +66,7 @@
 import { isAuthed, login, logout, getAccessToken } from "../api/auth";
 
 export default {
+  props: { me: { type: Object, default: null } },
   name: "AuthBar",
   emits: ["auth-changed"],
 
@@ -278,4 +280,17 @@ html[data-theme="light"] .btn.danger {
   font-size: 13px;
   color: var(--muted);
 }
+
+.admin-badge {
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #ef4444;
+}
+
 </style>

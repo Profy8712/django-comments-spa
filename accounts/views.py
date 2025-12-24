@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,6 +13,10 @@ User = get_user_model()
 
 
 class RegisterAPIView(APIView):
+    """
+    POST /api/accounts/register/
+    Create a new user and return user + JWT tokens.
+    """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
@@ -31,18 +36,33 @@ class RegisterAPIView(APIView):
         )
 
 
+class MeAPIView(APIView):
+    """
+    GET /api/accounts/me/
+    Return current authenticated user info including admin flags.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        data = UserPublicSerializer(user).data
+
+        # Ensure frontend can detect admin
+        data["is_staff"] = bool(user.is_staff)
+        data["is_superuser"] = bool(user.is_superuser)
+
+        return Response(data, status=status.HTTP_200_OK)
+
+
 class TokenObtainPairAPIViewCustom(TokenObtainPairView):
-    # стандартный /login/ (username+password -> access+refresh)
+    """
+    Optional custom JWT obtain endpoint (if you use it in accounts app).
+    """
     permission_classes = [permissions.AllowAny]
 
 
 class TokenRefreshAPIViewCustom(TokenRefreshView):
-    # стандартный /refresh/ (refresh -> access)
+    """
+    Optional custom JWT refresh endpoint (if you use it in accounts app).
+    """
     permission_classes = [permissions.AllowAny]
-
-
-class MeAPIView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        return Response(UserPublicSerializer(request.user).data, status=status.HTTP_200_OK)

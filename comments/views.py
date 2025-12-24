@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 
 from .documents import CommentDocument
 from .models import Comment
+from .permissions import IsStaffOrSuperuser
 from .serializers import (
     AttachmentCreateSerializer,
     AttachmentSerializer,
@@ -83,7 +84,7 @@ class CommentDetailView(generics.RetrieveAPIView):
 
 class CaptchaAPIView(APIView):
     """
-    GET /api/captcha/
+    GET /api/comments/captcha/
     -> { "key": "<hash>", "image": "/captcha/image/<hash>/" }
     """
     authentication_classes = []
@@ -163,3 +164,25 @@ class CommentSearchAPIView(APIView):
         total_value = getattr(total, "value", len(items)) if total else len(items)
 
         return Response({"query": q, "count": total_value, "results": data}, status=status.HTTP_200_OK)
+
+
+class AdminCommentDeleteView(generics.DestroyAPIView):
+    """
+    DELETE /api/comments/admin/comments/<id>/
+    Admin-only endpoint for deleting comments.
+    """
+    queryset = Comment.objects.all()
+    permission_classes = [IsStaffOrSuperuser]
+
+    def delete(self, request, *args, **kwargs):
+        comment = self.get_object()
+
+        # Optional hardening:
+        # forbid deleting comments that have replies
+        # if comment.children.exists():
+        #     return Response(
+        #         {"detail": "Cannot delete comment with replies."},
+        #         status=status.HTTP_400_BAD_REQUEST,
+        #     )
+
+        return super().delete(request, *args, **kwargs)

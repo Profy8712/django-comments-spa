@@ -11,7 +11,7 @@
       </button>
     </header>
 
-    <AuthBar @auth-changed="handleAuthChanged" />
+    <AuthBar :me="me" @auth-changed="handleAuthChanged" />
 
     <section class="section">
       <h2>New comment</h2>
@@ -58,6 +58,7 @@
         <CommentTree
           v-if="currentComments.length"
           :comments="currentComments"
+          :isAdmin="isAdmin"
           @changed="loadComments"
         />
 
@@ -82,6 +83,7 @@ import AuthBar from "./components/AuthBar.vue";
 import CommentForm from "./components/CommentForm.vue";
 import CommentTree from "./components/CommentTree.vue";
 import { fetchComments } from "./api/comments";
+import { fetchMe } from "./api/accounts";
 
 const THEME_KEY = "theme";
 const THEMES = { DARK: "dark", LIGHT: "light" };
@@ -112,6 +114,8 @@ export default {
   data() {
     return {
       theme: THEMES.DARK,
+      me: null,
+      isAdmin: false,
       comments: null,
       page: 1,
       ordering: "-created_at",
@@ -180,6 +184,17 @@ export default {
 
     handleAuthChanged() {
       this.loadComments();
+      this.loadMe();
+    },
+
+    async loadMe() {
+      try {
+        this.me = await fetchMe();
+        this.isAdmin = !!(this.me && (this.me.is_staff || this.me.is_superuser));
+      } catch (_) {
+        this.me = null;
+        this.isAdmin = false;
+      }
     },
 
     formatDate(value) {
@@ -215,6 +230,7 @@ export default {
   async mounted() {
     this.initTheme();
     await this.loadComments();
+    await this.loadMe();
     this.setupWebSocket();
   },
 

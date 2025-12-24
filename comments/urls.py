@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    AdminCommentDeleteView,
     AttachmentUploadView,
     CaptchaAPIView,
     CommentDetailView,
@@ -14,6 +15,9 @@ urlpatterns = [
     # service endpoints
     path("captcha/", CaptchaAPIView.as_view(), name="captcha"),
     path("search/", CommentSearchAPIView.as_view(), name="comment-search"),
+
+    # admin endpoints
+    path("admin/comments/<int:pk>/", AdminCommentDeleteView.as_view(), name="admin-comment-delete"),
 
     # comment detail endpoints
     path("<int:pk>/", CommentDetailView.as_view(), name="comment-detail"),

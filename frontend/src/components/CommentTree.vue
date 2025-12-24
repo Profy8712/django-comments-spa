@@ -37,6 +37,20 @@
         <button type="button" class="reply-btn" @click="toggleReply(comment.id)">
           {{ replyTo === comment.id ? "Cancel reply" : "Reply" }}
         </button>
+
+        <button
+          v-if="isAdmin"
+          type="button"
+          class="delete-btn"
+          :disabled="deletingId === comment.id"
+          @click="onDelete(comment.id)"
+        >
+          {{ deletingId === comment.id ? "Deleting..." : "Delete" }}
+        </button>
+      </div>
+
+      <div v-if="errorById[comment.id]" class="action-error">
+        {{ errorById[comment.id] }}
       </div>
 
       <div v-if="replyTo === comment.id" class="reply-form">
@@ -44,7 +58,11 @@
       </div>
 
       <div v-if="comment.children && comment.children.length" class="children">
-        <CommentTree :comments="comment.children" @changed="handleCreated" />
+        <CommentTree
+          :comments="comment.children"
+          :isAdmin="isAdmin"
+          @changed="handleCreated"
+        />
       </div>
     </div>
 
@@ -64,20 +82,60 @@
 
 <script>
 import CommentForm from "./CommentForm.vue";
-import { buildUrl } from "../api/index";
+import { buildUrl, apiGet } from "../api/index";
 import { renderSafeHtml } from "../helpers/render";
+
+// We reuse apiGet's auth headers by calling it with a DELETE through fetch:
+// (api/index currently has apiGet/apiPostJson/apiPostForm only)
+async function apiDelete(path) {
+  const base = buildUrl(path);
+  const token = localStorage.getItem("access");
+
+  const headers = new Headers();
+  headers.set("Accept", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(base, {
+    method: "DELETE",
+    credentials: "include",
+    headers,
+  });
+
+  // try parse json error if any
+  if (!res.ok) {
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      const data = await res.json().catch(() => null);
+      const msg = data?.detail || JSON.stringify(data);
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      err.payload = msg;
+      throw err;
+    }
+    const text = await res.text().catch(() => "");
+    const err = new Error(`HTTP ${res.status}`);
+    err.status = res.status;
+    err.payload = text;
+    throw err;
+  }
+
+  return true;
+}
 
 export default {
   name: "CommentTree",
   components: { CommentForm },
   props: {
     comments: { type: Array, required: true },
+    isAdmin: { type: Boolean, default: false },
   },
   emits: ["changed"],
   data() {
     return {
       replyTo: null,
       lightboxSrc: null,
+      deletingId: null,
+      errorById: {},
     };
   },
   methods: {
@@ -118,6 +176,33 @@ export default {
 
     renderText(text) {
       return renderSafeHtml(text || "");
+    },
+
+    async onDelete(commentId) {
+      if (!this.isAdmin) return;
+
+      // clear previous error
+      this.errorById = { ...this.errorById, [commentId]: "" };
+
+      const ok = window.confirm("Delete this comment? This action cannot be undone.");
+      if (!ok) return;
+
+      this.deletingId = commentId;
+
+      try {
+        await apiDelete(`/api/comments/admin/comments/${commentId}/`);
+        // refresh list
+        this.$emit("changed");
+      } catch (e) {
+        const msg =
+          e?.payload ||
+          (e?.status === 403 ? "Forbidden (admin only)" : "") ||
+          (e?.status === 401 ? "Unauthorized" : "") ||
+          "Failed to delete";
+        this.errorById = { ...this.errorById, [commentId]: msg };
+      } finally {
+        this.deletingId = null;
+      }
     },
   },
 };
@@ -213,6 +298,7 @@ html[data-theme="light"] .comment-item {
 .comment-actions {
   display: flex;
   justify-content: center;
+  gap: 10px;
   margin-top: 6px;
 }
 
@@ -245,6 +331,41 @@ html[data-theme="light"] .reply-btn {
 
 html[data-theme="light"] .reply-btn:hover {
   background: rgba(37, 99, 235, 0.14);
+}
+
+/* Delete button */
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--text);
+
+  cursor: pointer;
+  font-weight: 900;
+  min-width: 110px;
+}
+
+.delete-btn:hover {
+  background: rgba(248, 113, 113, 0.18);
+}
+
+.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Inline error below actions */
+.action-error {
+  margin-top: 8px;
+  text-align: center;
+  color: var(--danger, #ef4444);
+  font-weight: 800;
 }
 
 /* Reply form panel (NO fog in light) */
