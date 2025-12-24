@@ -38,7 +38,6 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     ports:
       - "127.0.0.1:15672:15672"
-    # ✅ Make healthcheck tolerant for slow EC2 startup
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 20s
@@ -59,7 +58,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      # ✅ don't block backend on rabbitmq healthcheck
       rabbitmq:
         condition: service_started
     volumes:
@@ -88,7 +86,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      # ✅ allow celery to start; it will reconnect to RabbitMQ automatically
       rabbitmq:
         condition: service_started
     command: celery -A core worker -l info
@@ -112,5 +109,33 @@ services:
         condition: service_started
     command: celery -A core beat -l info
 
+  # Builds SPA dist and copies it into a shared volume
+  frontend_build:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      target: export
+    container_name: comments_frontend_build
+    restart: "no"
+    volumes:
+      - spa_dist:/dist
+    command: sh -lc "cp -r /export/dist/* /dist/"
+
+  # Serves SPA + proxies /api, /admin, /ws to backend
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: comments_nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend_build
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - spa_dist:/usr/share/nginx/html:ro
+
 volumes:
   postgres_data:
+  spa_dist:
