@@ -78,176 +78,139 @@ Why:
 - Stateless & scalable
 
 ---
-## 🧠 JWT Concept in This Project
+## 🧠 JWT Authentication Concept
 
-The project uses **JWT (JSON Web Tokens)** to authenticate users and protect sensitive API endpoints.
+This project uses **JWT (JSON Web Tokens)** to authenticate users
+and protect sensitive API endpoints.
+
+JWT is implemented using **Django REST Framework SimpleJWT** and is
+designed for a **SPA + API architecture**.
 
 ### Why JWT?
 
 - Stateless authentication
 - No server-side sessions
-- Scales well in distributed systems
-- Ideal for SPA + API architecture
-
-We use **Django REST Framework SimpleJWT**.
+- Scales well for distributed systems
+- Ideal for Vue SPA + Django REST API
 
 ---
 
 ## 🔑 Authentication Endpoints
 
-### Obtain JWT Token
+### Obtain JWT Tokens
 
-`POST /api/auth/token/`
-
+```http
+POST /api/auth/token/
+```
 Request:
 
-```json
 {
-  "username": "example_user",
-  "password": "ExamplePassword123!"
+  "username": "user",
+  "password": "User12345!"
 }
-```
+
 
 Response:
 
-```json
 {
   "refresh": "<refresh_token>",
   "access": "<access_token>"
 }
-```
 
-- `access` → used for API requests
-- `refresh` → used to renew access token
 
----
+access — used for authenticated API requests
 
-### Refresh Access Token
+refresh — used to renew access token
 
-`POST /api/auth/token/refresh/`
+Refresh Access Token
+POST /api/auth/token/refresh/
+
 
 Request:
 
-```json
 {
   "refresh": "<refresh_token>"
 }
-```
+
 
 Response:
 
-```json
 {
   "access": "<new_access_token>"
 }
+
+🧪 How JWT Is Used in This Project
+✅ Primary method (UI)
+
+JWT authentication is handled via the Login form in the frontend UI:
+User enters username and password
+Backend returns JWT tokens
+Tokens are stored in localStorage
+Frontend automatically attaches:
+Authorization: Bearer <access_token>
+to protected API requests.
+
+No manual token handling is required.
+---
+## 🔍 How to Verify JWT Usage
+
+### Browser (DevTools)
+
+1. Open **DevTools → Network**
+2. Create a comment as an authenticated user
+3. Open request:  
+   `POST /api/comments/`
+4. Verify request headers:
+
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 ```
+This confirms that:
+
+JWT access token is attached automatically
+
+protected endpoints are accessed correctly
+
+frontend ↔ backend authentication works as expected
+
+🛡 Protected Endpoints Overview
+Endpoint	Access
+GET /api/comments/	Public
+POST /api/comments/	Anonymous + CAPTCHA or JWT
+POST /api/comments/<id>/upload/	JWT only
+DELETE /api/comments/<id>/	Admin only
+GET /api/search/comments/	Public
 
 ---
+## 🛡 Admin & Moderation Features
 
-## 🧪 How to Use JWT (API)
+The system includes a dedicated **administrator role** with elevated permissions.
 
-### Authorized Request Example
+### Admin capabilities
 
-```bash
-curl -X POST http://localhost:8000/api/comments/   -H "Authorization: Bearer ACCESS_TOKEN_HERE"   -H "Content-Type: application/json"   -d '{
-    "user_name": "jwt_user",
-    "email": "jwt@test.com",
-    "text": "Comment created with JWT"
-  }'
-```
+- Delete any comment (including nested replies)
+- Moderate user-generated content
+- Perform actions without CAPTCHA
+- Visible **ADMIN badge** in the UI
 
-Result:
+### Admin authentication
 
-- ✅ Comment is created
-- ❌ CAPTCHA is NOT required
+Admin users are standard Django users with:
 
----
+- `is_staff = true`
+- `is_superuser = true`
 
-### Unauthorized Request (Anonymous)
+Admin status is determined via the `/api/accounts/me/` endpoint
+and reflected in the frontend UI.
 
-```bash
-curl -X POST http://localhost:8000/api/comments/   -H "Content-Type: application/json"   -d '{
-    "user_name": "anon",
-    "email": "anon@test.com",
-    "text": "Anonymous comment"
-  }'
-```
+### Admin-only endpoint
 
-Result:
+| Endpoint | Method | Access |
+|-------|--------|-------|
+| `/api/comments/admin/comments/<id>/` | DELETE | Admin only |
 
-- ❌ 400 Bad Request
-- ❌ CAPTCHA required
+Unauthorized access returns **403 Forbidden**.
 
----
-
-## 🌐 How to Use JWT in Browser
-
-### Step 1: Get Token (DevTools → Console)
-
-```js
-fetch("http://localhost:8000/api/auth/token/", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    username: "example_user",
-    password: "ExamplePassword123!"
-  })
-})
-.then(r => r.json())
-.then(t => localStorage.setItem("access", t.access))
-```
-
----
-
-### Step 2: Send Authorized Request
-
-```js
-fetch("http://localhost:8000/api/comments/", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer " + localStorage.getItem("access")
-  },
-  body: JSON.stringify({
-    user_name: "jwt_user",
-    email: "jwt@test.com",
-    text: "JWT comment from browser"
-  })
-})
-.then(r => r.json())
-.then(console.log)
-```
-
-Result:
-
-- ✅ Comment created
-- ❌ CAPTCHA hidden / not required
-
----
-
-## 🔍 How to Verify JWT Is Used
-
-### Network Tab (Browser)
-
-1. Open DevTools → Network
-2. Submit a comment
-3. Click `/api/comments/`
-4. Check headers:
-
-`Authorization: Bearer eyJhbGciOiJIUzI1NiIs...`
-
----
-
-## 🛡 Protected Endpoints
-
-| Endpoint | Access |
-|-------|-------|
-| `GET /api/comments/` | Public |
-| `POST /api/comments/` | Anonymous + CAPTCHA OR JWT |
-| `POST /api/comments/<id>/upload/` | JWT only |
-| `GET /api/search/comments/` | Public |
-
----
 
 ## 🧩 JWT Configuration (settings.py)
 
@@ -272,26 +235,55 @@ SIMPLE_JWT = {
 ## 📁 Project Structure
 
 ```
+## 📁 Project Structure
+
+```text
 django_comments_spa/
-├── accounts/            # Authentication & JWT
-├── comments/            # Comments logic, serializers, validators
+├── accounts/                 # Authentication, JWT, /me endpoint
+│   ├── serializers.py
+│   ├── urls.py
+│   └── views.py
+│
+├── comments/                 # Comments domain logic
+│   ├── models.py             # Comment & Attachment models
+│   ├── serializers.py
+│   ├── views.py              # Public & admin APIs
+│   ├── permissions.py        # Admin permissions
+│   ├── urls.py
+│   └── validators.py
+│
 ├── core/
-│   ├── settings/        # Environment-based Django settings
-│   │   ├── __init__.py
-│   │   ├── base.py      # Base settings (shared)
-│   │   ├── local.py     # Local / development settings
-│   │   └── production.py# Production settings
-│   ├── __init__.py
-│   ├── asgi.py          # ASGI entrypoint (Django Channels)
-│   ├── celery.py        # Celery app
-│   ├── urls.py          # Root URL configuration
-│   └── wsgi.py          # WSGI entrypoint
-├── frontend/            # Vue 3 SPA
-├── media/               # Uploaded files
-├── staticfiles/         # Collected static files (production)
-├── docker-compose.yml
-├── docker-compose.prod.yml
+│   ├── settings/
+│   │   ├── base.py           # Shared settings
+│   │   ├── local.py          # Local development
+│   │   └── production.py     # AWS production
+│   │
+│   ├── asgi.py               # ASGI (Channels)
+│   ├── wsgi.py
+│   ├── celery.py
+│   └── urls.py
+│
+├── frontend/                 # Vue 3 SPA
+│   ├── src/
+│   │   ├── api/              # API clients
+│   │   ├── components/
+│   │   ├── helpers/
+│   │   ├── App.vue
+│   │   └── main.js
+│   ├── dist/                 # Production build
+│   └── Dockerfile
+│
+├── nginx/                    # Docker Nginx config
+│   ├── Dockerfile
+│   └── nginx.conf
+│
+├── media/                    # Uploaded files
+├── staticfiles/              # Collected static files
+│
+├── docker-compose.yml        # Local stack
+├── docker-compose.prod.yml   # Production stack
 ├── Dockerfile.backend
+│
 ├── manage.py
 ├── requirements.txt
 ├── README.md
@@ -539,16 +531,91 @@ You can use the following credentials to test:
 and have no administrative privileges.
 
 ---
+## 🔐 JWT Authentication
 
-## 🔐 How to Get JWT Tokens
+The project uses **JWT (access + refresh)** authentication.
 
-To authenticate and enable authorized features:
+- Tokens are stored in `localStorage`
+- UI updates automatically via `auth-changed` event
+- Admin users are marked with **ADMIN badge**
 
-1. Open the application in your browser
-2. Open **DevTools → Console**
-3. Execute the following command:
+Authorized mode enables:
+- posting comments without CAPTCHA
+- file uploads
+- admin actions (delete comments)
+- real-time WebSocket updates
 
-```js
+---
+
+## 🧪 Test Credentials
+
+**User (non-admin)**  
+- Login: `user`  
+- Password: `User12345!`
+
+⚠️ For testing only.  
+This user has **no admin permissions**.
+
+---
+
+## 🔑 Login (UI – recommended)
+
+1. Open the application:
+```text
+https://comments-spa-t.duckdns.org/
+```
+In the Auth panel:
+enter username
+enter password
+click Login
+
+After successful login:
+status changes to Authorized
+JWT tokens are saved to localStorage
+file uploads become available
+CAPTCHA is disabled
+
+if user is staff/superuser → ADMIN badge appears
+
+🚪 Logout
+
+To return to anonymous mode, click Logout in the UI.
+
+Or manually via browser console:
+
+localStorage.removeItem("access");
+localStorage.removeItem("refresh");
+location.reload();
+
+
+After logout:
+
+application works in anonymous mode
+CAPTCHA is required again
+admin actions are disabled
+
+🧰 Get JWT Tokens via API (optional / debugging)
+
+You can also obtain tokens directly via API:
+
+POST https://comments-spa-t.duckdns.org/api/auth/token/
+
+{
+  "username": "user",
+  "password": "User12345!"
+}
+
+
+Response:
+
+{
+  "access": "<JWT access token>",
+  "refresh": "<JWT refresh token>"
+}
+
+
+Store tokens manually (DevTools → Console):
+
 fetch("https://comments-spa-t.duckdns.org/api/auth/token/", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -561,34 +628,9 @@ fetch("https://comments-spa-t.duckdns.org/api/auth/token/", {
   .then(t => {
     localStorage.setItem("access", t.access);
     localStorage.setItem("refresh", t.refresh);
+    window.dispatchEvent(new Event("auth-changed"));
     location.reload();
   });
-```
-
-After this:
-- JWT tokens are stored in `localStorage`
-- File uploads become available
-- CAPTCHA is no longer required
-
----
-
-## 🚪 How to Logout (Return to Anonymous Mode)
-
-To exit the authorized mode:
-
-1. Open **DevTools → Console**
-2. Execute:
-
-```js
-localStorage.removeItem("access");
-localStorage.removeItem("refresh");
-location.reload();
-```
-
-After logout:
-- File uploads are disabled
-- CAPTCHA is required again
-- The application works in anonymous mode
 
 ---
 ## 🚀 CI/CD (GitHub Actions)
