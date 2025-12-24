@@ -53,7 +53,7 @@
         <div v-if="error" class="error">{{ error }}</div>
       </div>
 
-      <div class="muted">
+      <div class="muted-note">
         Tokens are stored in <code>localStorage</code>. UI updates via
         <code>auth-changed</code> event.
       </div>
@@ -92,7 +92,6 @@ export default {
       this.authed = isAuthed();
       this.error = "";
       this.busy = false;
-
       if (!this.authed) this.password = "";
     },
 
@@ -148,11 +147,13 @@ export default {
   margin: 18px 0;
 }
 
+/* IMPORTANT: no opacity on wrappers (it makes "fog") */
 .auth-card {
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(10, 15, 25, 0.55);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   border-radius: 16px;
   padding: 14px;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
 }
 
 .auth-head {
@@ -173,11 +174,11 @@ export default {
   align-items: center;
   gap: 8px;
   font-size: 13px;
-  opacity: 0.9;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
 }
 
 .auth-status .dot {
@@ -187,8 +188,12 @@ export default {
   background: rgba(255, 255, 255, 0.35);
 }
 
+html[data-theme="light"] .auth-status .dot {
+  background: rgba(15, 23, 42, 0.28);
+}
+
 .auth-status.on .dot {
-  background: rgba(120, 255, 170, 0.9);
+  background: var(--success);
 }
 
 .auth-form {
@@ -198,20 +203,21 @@ export default {
 
 .lbl {
   font-size: 12px;
-  opacity: 0.9;
+  font-weight: 800;
+  color: var(--text);
 }
 
 .inp {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(0, 0, 0, 0.20);
+  border: 1px solid var(--border);
+  background: var(--input-bg);
   color: inherit;
   outline: none;
 }
 
 .inp:focus {
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: var(--border-strong);
 }
 
 .row {
@@ -224,10 +230,10 @@ export default {
 .btn {
   padding: 10px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  background: var(--surface);
   color: inherit;
-  font-weight: 800;
+  font-weight: 900;
   cursor: pointer;
 }
 
@@ -240,10 +246,18 @@ export default {
   background: rgba(90, 150, 255, 0.22);
   border-color: rgba(90, 150, 255, 0.35);
 }
+html[data-theme="light"] .btn.primary {
+  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.35);
+}
 
 .btn.danger {
   background: rgba(255, 90, 120, 0.20);
   border-color: rgba(255, 90, 120, 0.30);
+}
+html[data-theme="light"] .btn.danger {
+  background: rgba(225, 29, 72, 0.08);
+  border-color: rgba(225, 29, 72, 0.30);
 }
 
 .btn.ghost {
@@ -259,9 +273,9 @@ export default {
   background: rgba(255, 90, 120, 0.10);
 }
 
-.muted {
+.muted-note {
   margin-top: 10px;
   font-size: 13px;
-  opacity: 0.85;
+  color: var(--muted);
 }
 </style>

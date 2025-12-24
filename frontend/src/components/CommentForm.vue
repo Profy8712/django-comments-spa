@@ -213,8 +213,6 @@ export default {
         const img = data?.image || data?.image_url || "";
 
         this.captcha.key = key;
-
-        // IMPORTANT: buildUrl so it works with VITE_API_URL and with proxy
         this.captcha.image = buildUrl(img);
 
         this.form.captcha_key = key;
@@ -307,7 +305,6 @@ export default {
       this.errors = {};
       this.syncAuth();
 
-      // validate
       if (!this.form.text) this.errors.text = "Text is required.";
       if (!this.form.user_name) this.errors.user_name = "User Name is required.";
       if (!this.form.email) this.errors.email = "Email is required.";
@@ -337,10 +334,8 @@ export default {
           payload.captcha_value = this.form.captcha_value;
         }
 
-        // 1) create comment
         const created = await createComment(payload);
 
-        // 2) upload attachments (auth only)
         if (this.hasJwt && this.selectedFiles.length) {
           const okFiles = this.selectedFiles.filter((f) => !f.error).map((f) => f.file);
           for (const file of okFiles) {
@@ -348,17 +343,14 @@ export default {
           }
         }
 
-        // reset
         this.form.text = "";
         this.form.homepage = "";
         this.clearFiles();
 
         if (!this.hasJwt) await this.loadCaptcha();
 
-        // refresh list AFTER uploads finished
         this.$emit("created", created);
 
-        // extra refresh tick (small race guard)
         setTimeout(() => {
           this.$emit("created", created);
         }, 250);
@@ -376,6 +368,7 @@ export default {
 </script>
 
 <style scoped>
+/* IMPORTANT: no rgba fog in LIGHT (we use variables) */
 .comment-form {
   display: flex;
   flex-direction: column;
@@ -384,7 +377,7 @@ export default {
   width: 100%;
   margin: 0;
 
-  background: rgba(17, 28, 51, 0.70);
+  background: var(--surface-3);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 14px;
@@ -397,9 +390,7 @@ export default {
   gap: 14px;
 }
 @media (max-width: 760px) {
-  .grid2 {
-    grid-template-columns: 1fr;
-  }
+  .grid2 { grid-template-columns: 1fr; }
 }
 
 .form-group {
@@ -415,9 +406,9 @@ export default {
 
 .form-input,
 .form-textarea {
-  background: rgba(15, 23, 42, 0.85);
+  background: var(--input-bg);
   color: var(--text);
-  border: 1px solid rgba(34, 48, 74, 0.85);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 10px 12px;
   font-size: 14px;
@@ -430,15 +421,18 @@ export default {
   opacity: 1;
 }
 
+html[data-theme="light"] .form-input::placeholder,
+html[data-theme="light"] .form-textarea::placeholder {
+  color: rgba(15, 23, 42, 0.45);
+}
+
 .form-input:focus,
 .form-textarea:focus {
   border-color: rgba(96, 165, 250, 0.55);
   box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.16);
 }
 
-.form-textarea {
-  resize: vertical;
-}
+.form-textarea { resize: vertical; }
 
 .error-text {
   color: var(--danger, #ff5a78);
@@ -453,7 +447,6 @@ export default {
 .hint-lock {
   color: var(--muted);
   font-size: 13px;
-  opacity: 0.95;
 }
 
 /* Toolbar */
@@ -473,8 +466,14 @@ export default {
   font-weight: 900;
   color: var(--text);
 }
-.toolbar-btn:hover {
-  background: rgba(96, 165, 250, 0.16);
+.toolbar-btn:hover { background: rgba(96, 165, 250, 0.16); }
+
+html[data-theme="light"] .toolbar-btn {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+html[data-theme="light"] .toolbar-btn:hover {
+  background: rgba(37, 99, 235, 0.12);
 }
 
 /* Files */
@@ -489,10 +488,10 @@ export default {
   display: flex;
   gap: 10px;
   align-items: center;
-  border: 1px solid rgba(34, 48, 74, 0.85);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 8px 10px;
-  background: rgba(15, 23, 42, 0.65);
+  background: var(--surface);
 }
 
 .file-name {
@@ -517,11 +516,8 @@ export default {
   cursor: pointer;
   font-size: 16px;
   color: var(--text);
-  opacity: 0.9;
 }
-.file-remove:hover {
-  opacity: 1;
-}
+.file-remove:hover { opacity: 1; }
 
 /* Captcha */
 .captcha-row {
@@ -535,8 +531,8 @@ export default {
   height: 48px;
   width: auto;
   border-radius: 12px;
-  border: 1px solid rgba(34, 48, 74, 0.85);
-  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--border);
+  background: var(--input-bg);
 }
 
 .captcha-reload {
@@ -548,14 +544,17 @@ export default {
   font-weight: 900;
   color: var(--text);
 }
-.captcha-reload:hover {
-  background: rgba(96, 165, 250, 0.16);
+.captcha-reload:hover { background: rgba(96, 165, 250, 0.16); }
+
+html[data-theme="light"] .captcha-reload {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+html[data-theme="light"] .captcha-reload:hover {
+  background: rgba(37, 99, 235, 0.12);
 }
 
-.captcha-input {
-  flex: 1;
-  min-width: 220px;
-}
+.captcha-input { flex: 1; min-width: 220px; }
 
 /* Submit */
 .form-actions {
@@ -575,12 +574,15 @@ export default {
   min-width: 190px;
 }
 
-.btn:hover {
-  background: rgba(96, 165, 250, 0.20);
-}
+.btn:hover { background: rgba(96, 165, 250, 0.20); }
 
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+html[data-theme="light"] .btn {
+  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.28);
+}
+html[data-theme="light"] .btn:hover {
+  background: rgba(37, 99, 235, 0.14);
 }
 </style>

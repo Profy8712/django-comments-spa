@@ -11,15 +11,8 @@
 
       <div class="comment-text" v-html="renderText(comment.text)"></div>
 
-      <div
-        v-if="comment.attachments && comment.attachments.length"
-        class="attachments"
-      >
-        <div
-          v-for="a in comment.attachments"
-          :key="a.id"
-          class="attachment-item"
-        >
+      <div v-if="comment.attachments && comment.attachments.length" class="attachments">
+        <div v-for="a in comment.attachments" :key="a.id" class="attachment-item">
           <img
             v-if="isImageAttachment(a)"
             class="attachment-thumb"
@@ -137,13 +130,23 @@ export default {
   gap: 12px;
 }
 
-/* Card */
+/* Card (base = uses variables; light becomes solid) */
 .comment-item {
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 14px;
+  background: var(--surface-3);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+}
+
+/* Dark keeps "glassy" look without affecting text */
+html:not([data-theme="light"]) .comment-item {
   background: rgba(17, 28, 51, 0.75);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+}
+
+/* In light, shadow should be softer */
+html[data-theme="light"] .comment-item {
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
 }
 
 .comment-header {
@@ -197,12 +200,13 @@ export default {
   border-radius: 12px;
   border: 1px solid var(--border);
   cursor: zoom-in;
+  background: var(--input-bg);
 }
 
 .attachment-link {
   color: var(--primary);
   text-decoration: underline;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /* Actions */
@@ -212,7 +216,7 @@ export default {
   margin-top: 6px;
 }
 
-/* ✅ Reply always visible */
+/* Reply button */
 .reply-btn {
   display: inline-flex;
   align-items: center;
@@ -229,22 +233,44 @@ export default {
   font-weight: 900;
   min-width: 140px;
 }
+
 .reply-btn:hover {
   background: rgba(96, 165, 250, 0.18);
 }
 
+html[data-theme="light"] .reply-btn {
+  background: rgba(37, 99, 235, 0.10);
+  border-color: rgba(37, 99, 235, 0.30);
+}
+
+html[data-theme="light"] .reply-btn:hover {
+  background: rgba(37, 99, 235, 0.14);
+}
+
+/* Reply form panel (NO fog in light) */
 .reply-form {
   margin-top: 12px;
   padding: 12px;
   border-radius: 16px;
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--surface-2);
   border: 1px solid var(--border);
 }
 
+/* Dark keeps old tone */
+html:not([data-theme="light"]) .reply-form {
+  background: rgba(15, 23, 42, 0.60);
+}
+
+/* Children indentation line */
 .children {
   margin-top: 12px;
   padding-left: 14px;
-  border-left: 2px solid rgba(34, 48, 74, 0.7);
+  border-left: 2px solid var(--border);
+}
+
+/* Dark keeps stronger line */
+html:not([data-theme="light"]) .children {
+  border-left-color: rgba(34, 48, 74, 0.7);
 }
 
 /* Lightbox */

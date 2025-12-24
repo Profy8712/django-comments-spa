@@ -3,8 +3,12 @@
     <header class="top">
       <div class="brand">
         <div class="title">Comments SPA</div>
-         <!-- subtitle removed -->
       </div>
+
+      <button class="theme-toggle" type="button" @click="toggleTheme" :aria-label="themeAria">
+        <span class="theme-ico" aria-hidden="true">{{ themeIcon }}</span>
+        <span class="theme-text">{{ themeLabel }}</span>
+      </button>
     </header>
 
     <AuthBar @auth-changed="handleAuthChanged" />
@@ -79,12 +83,35 @@ import CommentForm from "./components/CommentForm.vue";
 import CommentTree from "./components/CommentTree.vue";
 import { fetchComments } from "./api/comments";
 
+const THEME_KEY = "theme";
+const THEMES = { DARK: "dark", LIGHT: "light" };
+
+function safeGetTheme() {
+  try {
+    const t = localStorage.getItem(THEME_KEY);
+    return t === THEMES.LIGHT ? THEMES.LIGHT : THEMES.DARK;
+  } catch (_) {
+    return THEMES.DARK;
+  }
+}
+
+function applyThemeToDom(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+}
+
+function safeSaveTheme(theme) {
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch (_) {}
+}
+
 export default {
   name: "App",
   components: { AuthBar, CommentForm, CommentTree },
 
   data() {
     return {
+      theme: THEMES.DARK,
       comments: null,
       page: 1,
       ordering: "-created_at",
@@ -101,9 +128,30 @@ export default {
       if (!this.comments) return [];
       return this.comments.results || this.comments;
     },
+    themeIcon() {
+      return this.theme === THEMES.DARK ? "🌙" : "☀️";
+    },
+    themeLabel() {
+      return this.theme === THEMES.DARK ? "Dark" : "Light";
+    },
+    themeAria() {
+      return this.theme === THEMES.DARK ? "Switch to light theme" : "Switch to dark theme";
+    },
   },
 
   methods: {
+    setTheme(theme) {
+      this.theme = theme === THEMES.LIGHT ? THEMES.LIGHT : THEMES.DARK;
+      applyThemeToDom(this.theme);
+      safeSaveTheme(this.theme);
+    },
+    toggleTheme() {
+      this.setTheme(this.theme === THEMES.DARK ? THEMES.LIGHT : THEMES.DARK);
+    },
+    initTheme() {
+      this.setTheme(safeGetTheme());
+    },
+
     async loadComments() {
       this.loading = true;
       try {
@@ -126,19 +174,11 @@ export default {
     },
 
     async handleCreated() {
-      // One refresh is usually enough
       await this.loadComments();
-
-      // But attachments can be attached right after upload (small race),
-      // so we do a tiny extra refresh to ensure UI shows attachments immediately.
-      setTimeout(() => {
-        this.loadComments();
-      }, 300);
+      setTimeout(() => this.loadComments(), 300);
     },
 
     handleAuthChanged() {
-      // When auth changes, it’s often useful to refresh comments list (optional).
-      // Keeps UI consistent with permissions.
       this.loadComments();
     },
 
@@ -173,6 +213,7 @@ export default {
   },
 
   async mounted() {
+    this.initTheme();
     await this.loadComments();
     this.setupWebSocket();
   },
@@ -193,30 +234,49 @@ export default {
 
 .top {
   margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
+
 .brand .title {
   font-size: 28px;
   font-weight: 900;
   letter-spacing: 0.2px;
 }
-.brand .subtitle {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 13px;
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 900;
+  cursor: pointer;
+  user-select: none;
 }
+.theme-toggle:hover { border-color: var(--border-strong); }
+
+.theme-ico { font-size: 14px; line-height: 1; }
+.theme-text { font-size: 13px; letter-spacing: 0.2px; }
 
 .section {
   margin-top: 14px;
   padding: 14px;
-  background: rgba(15, 23, 42, 0.7);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
 }
-.section h2 {
-  margin: 0 0 10px;
-  font-size: 18px;
+html[data-theme="light"] .section {
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
 }
+
+.section h2 { margin: 0 0 10px; font-size: 18px; }
 
 .section-head {
   display: flex;
@@ -231,12 +291,9 @@ export default {
   gap: 8px;
   align-items: center;
 }
-.controls label {
-  color: var(--muted);
-  font-size: 13px;
-}
+.controls label { color: var(--muted); font-size: 13px; }
 .controls select {
-  background: var(--surface, rgba(0,0,0,0.2));
+  background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -244,45 +301,43 @@ export default {
   outline: none;
 }
 
-.comments-wrap {
-  margin-top: 8px;
-}
+.comments-wrap { margin-top: 8px; }
+
 .comments-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  background: rgba(17, 28, 51, 0.8);
+  background: var(--surface-3);
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
   margin-bottom: 12px;
 }
+
 .comments-table th,
 .comments-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(34, 48, 74, 0.7);
+  border-bottom: 1px solid var(--border);
   text-align: left;
   font-size: 13px;
 }
+
+html:not([data-theme="light"]) .comments-table th,
+html:not([data-theme="light"]) .comments-table td {
+  border-bottom: 1px solid rgba(34, 48, 74, 0.7);
+}
+
 .comments-table thead th {
   background: rgba(96, 165, 250, 0.10);
   font-weight: 800;
 }
-.comments-table tbody tr:last-child td {
-  border-bottom: none;
-}
-.nowrap {
-  white-space: nowrap;
-}
 
-.loading {
-  color: var(--muted);
-  font-size: 13px;
-}
+.comments-table tbody tr:last-child td { border-bottom: none; }
 
-.muted {
-  color: var(--muted);
-}
+.nowrap { white-space: nowrap; }
+
+.loading { color: var(--muted); font-size: 13px; }
+.muted { color: var(--muted); }
 
 .btn-outline {
   border: 1px solid rgba(96, 165, 250, 0.35);
@@ -293,9 +348,13 @@ export default {
   cursor: pointer;
   font-weight: 800;
 }
-.btn-outline:hover {
-  background: rgba(96, 165, 250, 0.16);
+.btn-outline:hover { background: rgba(96, 165, 250, 0.16); }
+
+html[data-theme="light"] .btn-outline {
+  background: #ffffff;
+  border-color: rgba(37, 99, 235, 0.35);
 }
+html[data-theme="light"] .btn-outline:hover { background: #f1f5ff; }
 
 .pagination {
   margin-top: 12px;
