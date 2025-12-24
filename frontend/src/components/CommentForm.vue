@@ -1,31 +1,29 @@
-<!-- frontend/src/components/CommentForm.vue -->
 <template>
   <form class="comment-form" @submit.prevent="onSubmit">
-    <div class="form-group">
-      <label class="form-label">User Name *</label>
-      <input
-        class="form-input"
-        v-model.trim="form.user_name"
-        type="text"
-        placeholder="Your name"
-        :disabled="submitting || hasJwt"
-      />
-      <p v-if="hasJwt" class="hint-text">
-        You are authenticated — name/email can be taken from your session.
-      </p>
-      <p v-if="errors.user_name" class="error-text">{{ errors.user_name }}</p>
-    </div>
+    <div class="grid2">
+      <div class="form-group">
+        <label class="form-label">User Name *</label>
+        <input
+          class="form-input"
+          v-model.trim="form.user_name"
+          type="text"
+          :disabled="submitting"
+          placeholder=""
+        />
+        <p v-if="errors.user_name" class="error-text">{{ errors.user_name }}</p>
+      </div>
 
-    <div class="form-group">
-      <label class="form-label">Email *</label>
-      <input
-        class="form-input"
-        v-model.trim="form.email"
-        type="email"
-        placeholder="your@email.com"
-        :disabled="submitting || hasJwt"
-      />
-      <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input
+          class="form-input"
+          v-model.trim="form.email"
+          type="email"
+          :disabled="submitting"
+          placeholder=""
+        />
+        <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
+      </div>
     </div>
 
     <div class="form-group">
@@ -34,8 +32,8 @@
         class="form-input"
         v-model.trim="form.homepage"
         type="url"
-        placeholder="https://example.com"
         :disabled="submitting"
+        placeholder=""
       />
       <p v-if="errors.homepage" class="error-text">{{ errors.homepage }}</p>
     </div>
@@ -55,13 +53,12 @@
         class="form-textarea"
         v-model="form.text"
         rows="6"
-        placeholder="Write your comment..."
         :disabled="submitting"
+        placeholder="Write your comment..."
       />
       <p v-if="errors.text" class="error-text">{{ errors.text }}</p>
     </div>
 
-    <!-- Attachments -->
     <div class="form-group">
       <label class="form-label">Attachments</label>
 
@@ -75,34 +72,31 @@
         :disabled="submitting || !hasJwt"
       />
 
-      <p v-if="!hasJwt" class="error-text">
-        Attachments are available only for logged-in users.
+      <p v-if="!hasJwt" class="hint-lock">
+        🔒 Login to attach files.
       </p>
+
+      <div v-if="hasJwt" class="hint-text">
+        Allowed: images (JPG/PNG/GIF/WEBP) and TXT (≤100 KB).
+      </div>
 
       <div v-if="hasJwt && selectedFiles.length" class="files-list">
         <div v-for="(f, idx) in selectedFiles" :key="idx" class="file-item">
           <span class="file-name">{{ f.file.name }}</span>
           <span class="file-size">({{ formatBytes(f.file.size) }})</span>
-
           <span v-if="f.error" class="file-error">{{ f.error }}</span>
-
-          <button class="file-remove" type="button" @click="removeFile(idx)" :disabled="submitting">
-            ✕
-          </button>
+          <button class="file-remove" type="button" @click="removeFile(idx)" :disabled="submitting">✕</button>
         </div>
       </div>
 
       <p v-if="errors.attachments" class="error-text">{{ errors.attachments }}</p>
     </div>
 
-    <!-- CAPTCHA -->
     <div v-if="!hasJwt" class="form-group">
       <label class="form-label">CAPTCHA *</label>
 
       <div class="captcha-row">
-        <div class="captcha-image-wrapper">
-          <img v-if="captcha.image" class="captcha-image" :src="captcha.image" alt="CAPTCHA" />
-        </div>
+        <img v-if="captcha.image" class="captcha-image" :src="captcha.image" alt="CAPTCHA" />
 
         <button
           class="captcha-reload"
@@ -119,8 +113,8 @@
           v-model.trim="form.captcha_value"
           type="text"
           autocomplete="off"
-          placeholder="Enter text from image"
           :disabled="submitting"
+          placeholder="Enter text from image"
         />
       </div>
 
@@ -138,29 +132,25 @@
 </template>
 
 <script>
-import { apiGet, getAccessToken } from "../api/index";
+import { apiGet, getAccessToken, buildUrl } from "../api/index";
 import { createComment } from "../api/comments";
 import { uploadAttachment } from "../api/attachments";
 
 export default {
   name: "CommentForm",
   emits: ["created"],
-
   props: {
-    parent_id: {
-      type: [Number, String, null],
-      default: null,
-    },
+    parent_id: { type: [Number, String, null], default: null },
   },
 
   data() {
     return {
       submitting: false,
       captchaLoading: false,
-
       hasJwt: false,
-
       captcha: { key: "", image: "" },
+      selectedFiles: [],
+      errors: {},
 
       form: {
         user_name: "",
@@ -170,85 +160,42 @@ export default {
         captcha_key: "",
         captcha_value: "",
       },
-
-      // [{ file: File, error: string|null }]
-      selectedFiles: [],
-
-      errors: {},
     };
   },
 
   mounted() {
-    // bind once so removeEventListener works
-    this._onStorageBound = (e) => this.onStorage(e);
     this._onAuthChangedBound = () => this.onAuthChanged();
-
     this.syncAuth();
 
-    if (!this.hasJwt) {
-      this.loadCaptcha();
-    }
-
-    // only works for other tabs/windows
-    window.addEventListener("storage", this._onStorageBound);
-
-    // works for same tab (we dispatch it after saving tokens)
+    if (!this.hasJwt) this.loadCaptcha();
     window.addEventListener("auth-changed", this._onAuthChangedBound);
   },
 
   beforeUnmount() {
-    window.removeEventListener("storage", this._onStorageBound);
     window.removeEventListener("auth-changed", this._onAuthChangedBound);
   },
 
   methods: {
-    onStorage(e) {
-      // Fires ONLY when localStorage changes in ANOTHER tab
-      if (e && (e.key === "access" || e.key === "refresh")) {
-        this.onAuthChanged();
+    syncAuth() {
+      this.hasJwt = !!getAccessToken();
+      if (this.hasJwt) {
+        this.form.captcha_key = "";
+        this.form.captcha_value = "";
       }
     },
 
     onAuthChanged() {
-      const wasAuthed = this.hasJwt;
+      const was = this.hasJwt;
       this.syncAuth();
 
-      // anonymous -> authenticated
-      if (!wasAuthed && this.hasJwt) {
-        // Avoid inconsistency: now identity comes from JWT
-        this.form.user_name = "";
-        this.form.email = "";
-
-        // captcha no longer needed
-        this.captcha = { key: "", image: "" };
-        this.form.captcha_key = "";
-        this.form.captcha_value = "";
-        this.errors.captcha_value = "";
-
-        // optional: clear generic errors on auth switch
+      if (!was && this.hasJwt) {
         this.errors = {};
-      }
-
-      // authenticated -> anonymous
-      if (wasAuthed && !this.hasJwt) {
-        // attachments not allowed for anonymous
         this.clearFiles();
-
-        // captcha required again
-        this.loadCaptcha();
       }
-    },
 
-    syncAuth() {
-      this.hasJwt = !!getAccessToken();
-
-      if (!this.hasJwt) {
-        // anonymous
-        // keep captcha fields (will be filled by loadCaptcha)
-      } else {
-        // authed: captcha not needed
-        this.form.captcha_key = "";
-        this.form.captcha_value = "";
+      if (was && !this.hasJwt) {
+        this.clearFiles();
+        this.loadCaptcha();
       }
     },
 
@@ -260,15 +207,15 @@ export default {
 
     async loadCaptcha() {
       this.captchaLoading = true;
-      this.errors.captcha_value = "";
-
       try {
         const data = await apiGet("/api/comments/captcha/");
         const key = data?.key || "";
         const img = data?.image || data?.image_url || "";
 
         this.captcha.key = key;
-        this.captcha.image = this.resolveUrl(img);
+
+        // IMPORTANT: buildUrl so it works with VITE_API_URL and with proxy
+        this.captcha.image = buildUrl(img);
 
         this.form.captcha_key = key;
         this.form.captcha_value = "";
@@ -277,13 +224,6 @@ export default {
       } finally {
         this.captchaLoading = false;
       }
-    },
-
-    resolveUrl(pathOrUrl) {
-      if (!pathOrUrl) return "";
-      if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) return pathOrUrl;
-      const p = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
-      return `${window.location.protocol}//${window.location.host}${p}`;
     },
 
     insertTag(tag) {
@@ -304,8 +244,8 @@ export default {
 
       this.$nextTick(() => {
         el.focus();
-        const cursorPos = start + open.length + selected.length + close.length;
-        el.setSelectionRange(cursorPos, cursorPos);
+        const pos = start + open.length + selected.length + close.length;
+        el.setSelectionRange(pos, pos);
       });
     },
 
@@ -367,16 +307,10 @@ export default {
       this.errors = {};
       this.syncAuth();
 
-      // basic validation
-      if (!this.hasJwt) {
-        if (!this.form.user_name) this.errors.user_name = "User Name is required.";
-        if (!this.form.email) this.errors.email = "Email is required.";
-      } else {
-        // authed: allow empty name/email (identity from JWT)
-        // if you still REQUIRE them in backend, remove this block
-      }
-
+      // validate
       if (!this.form.text) this.errors.text = "Text is required.";
+      if (!this.form.user_name) this.errors.user_name = "User Name is required.";
+      if (!this.form.email) this.errors.email = "Email is required.";
 
       if (!this.hasJwt) {
         if (!this.form.captcha_key || !this.form.captcha_value) {
@@ -403,9 +337,10 @@ export default {
           payload.captcha_value = this.form.captcha_value;
         }
 
+        // 1) create comment
         const created = await createComment(payload);
 
-        // Upload attachments ONLY for JWT users
+        // 2) upload attachments (auth only)
         if (this.hasJwt && this.selectedFiles.length) {
           const okFiles = this.selectedFiles.filter((f) => !f.error).map((f) => f.file);
           for (const file of okFiles) {
@@ -413,19 +348,22 @@ export default {
           }
         }
 
-        // reset after success
+        // reset
         this.form.text = "";
         this.form.homepage = "";
         this.clearFiles();
 
-        if (!this.hasJwt) {
-          await this.loadCaptcha();
-        }
+        if (!this.hasJwt) await this.loadCaptcha();
 
+        // refresh list AFTER uploads finished
         this.$emit("created", created);
+
+        // extra refresh tick (small race guard)
+        setTimeout(() => {
+          this.$emit("created", created);
+        }, 250);
       } catch (err) {
         this.errors = this.mapApiErrors(err);
-
         if (!this.hasJwt && (this.errors.captcha_value || this.errors.captcha_key)) {
           await this.loadCaptcha();
         }
@@ -442,7 +380,26 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  max-width: 720px;
+
+  width: 100%;
+  margin: 0;
+
+  background: rgba(17, 28, 51, 0.70);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 760px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-group {
@@ -452,16 +409,31 @@ export default {
 }
 
 .form-label {
-  font-weight: 600;
+  font-weight: 900;
+  color: var(--text);
 }
 
 .form-input,
 .form-textarea {
-  border: 1px solid #d9d9d9;
-  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--text);
+  border: 1px solid rgba(34, 48, 74, 0.85);
+  border-radius: 14px;
   padding: 10px 12px;
   font-size: 14px;
   outline: none;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: rgba(148, 163, 184, 0.9);
+  opacity: 1;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  border-color: rgba(96, 165, 250, 0.55);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.16);
 }
 
 .form-textarea {
@@ -469,15 +441,22 @@ export default {
 }
 
 .error-text {
-  color: #e74c3c;
+  color: var(--danger, #ff5a78);
   font-size: 13px;
 }
 
 .hint-text {
-  color: #666;
+  color: var(--muted);
   font-size: 13px;
 }
 
+.hint-lock {
+  color: var(--muted);
+  font-size: 13px;
+  opacity: 0.95;
+}
+
+/* Toolbar */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -485,14 +464,20 @@ export default {
 }
 
 .toolbar-btn {
-  border: 1px solid #d9d9d9;
-  background: #fff;
-  border-radius: 8px;
-  padding: 6px 10px;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.10);
+  border-radius: 12px;
+  padding: 7px 10px;
   cursor: pointer;
   font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+}
+.toolbar-btn:hover {
+  background: rgba(96, 165, 250, 0.16);
 }
 
+/* Files */
 .files-list {
   display: flex;
   flex-direction: column;
@@ -504,22 +489,24 @@ export default {
   display: flex;
   gap: 10px;
   align-items: center;
-  border: 1px solid #eee;
-  border-radius: 8px;
+  border: 1px solid rgba(34, 48, 74, 0.85);
+  border-radius: 14px;
   padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.65);
 }
 
 .file-name {
-  font-weight: 600;
+  font-weight: 900;
+  color: var(--text);
 }
 
 .file-size {
-  color: #777;
+  color: var(--muted);
   font-size: 13px;
 }
 
 .file-error {
-  color: #e74c3c;
+  color: var(--danger, #ff5a78);
   font-size: 13px;
   margin-left: auto;
 }
@@ -529,44 +516,67 @@ export default {
   background: transparent;
   cursor: pointer;
   font-size: 16px;
+  color: var(--text);
+  opacity: 0.9;
+}
+.file-remove:hover {
+  opacity: 1;
 }
 
+/* Captcha */
 .captcha-row {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .captcha-image {
-  display: block;
   height: 48px;
   width: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 48, 74, 0.85);
+  background: rgba(15, 23, 42, 0.85);
 }
 
 .captcha-reload {
-  border: 1px solid #d9d9d9;
-  background: #fff;
-  border-radius: 8px;
-  padding: 8px;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.10);
+  border-radius: 12px;
+  padding: 8px 10px;
   cursor: pointer;
+  font-weight: 900;
+  color: var(--text);
+}
+.captcha-reload:hover {
+  background: rgba(96, 165, 250, 0.16);
 }
 
 .captcha-input {
   flex: 1;
+  min-width: 220px;
 }
 
+/* Submit */
 .form-actions {
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
+  margin-top: 4px;
 }
 
 .btn {
-  background: #111;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 10px 16px;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  background: rgba(96, 165, 250, 0.16);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 12px 18px;
   cursor: pointer;
+  font-weight: 900;
+  min-width: 190px;
+}
+
+.btn:hover {
+  background: rgba(96, 165, 250, 0.20);
 }
 
 .btn:disabled {
