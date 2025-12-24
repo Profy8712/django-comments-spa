@@ -2,8 +2,10 @@
   <div class="comment-tree">
     <div v-for="comment in comments" :key="comment.id" class="comment-item">
       <div class="comment-header">
-        <strong class="user-name">{{ comment.user_name }}</strong>
-        <span class="email">{{ comment.email }}</span>
+        <div class="header-left">
+          <strong class="user-name">{{ comment.user_name }}</strong>
+          <span class="email">{{ comment.email }}</span>
+        </div>
         <span class="date">{{ formatDate(comment.created_at) }}</span>
       </div>
 
@@ -38,9 +40,11 @@
         </div>
       </div>
 
-      <button type="button" class="reply-btn" @click="toggleReply(comment.id)">
-        {{ replyTo === comment.id ? "Cancel reply" : "Reply" }}
-      </button>
+      <div class="comment-actions">
+        <button type="button" class="reply-btn" @click="toggleReply(comment.id)">
+          {{ replyTo === comment.id ? "Cancel reply" : "Reply" }}
+        </button>
+      </div>
 
       <div v-if="replyTo === comment.id" class="reply-form">
         <CommentForm :parent_id="comment.id" @created="handleCreated" />
@@ -74,10 +78,7 @@ export default {
   name: "CommentTree",
   components: { CommentForm },
   props: {
-    comments: {
-      type: Array,
-      required: true,
-    },
+    comments: { type: Array, required: true },
   },
   emits: ["changed"],
   data() {
@@ -98,33 +99,22 @@ export default {
 
     formatDate(value) {
       if (!value) return "";
-      const date = new Date(value);
-      return date.toLocaleString();
+      return new Date(value).toLocaleString();
     },
 
     openLightbox(src) {
-      if (!src) return;
-      this.lightboxSrc = src;
+      if (src) this.lightboxSrc = src;
     },
 
     closeLightbox() {
       this.lightboxSrc = null;
     },
 
-        resolveFileUrl(file) {
-        if (!file) return "";
-
-        // If backend already returned absolute URL — use it as-is
-        if (file.startsWith("http://") || file.startsWith("https://")) {
-          return file;
-        }
-
-        // Otherwise build absolute URL
-        return buildUrl(file.startsWith("/") ? file : `/${file}`);
-      },
-
-
-
+    resolveFileUrl(file) {
+      if (!file) return "";
+      if (file.startsWith("http://") || file.startsWith("https://")) return file;
+      return buildUrl(file.startsWith("/") ? file : `/${file}`);
+    },
 
     isImageAttachment(attachment) {
       const f = attachment?.file || "";
@@ -147,42 +137,52 @@ export default {
   gap: 12px;
 }
 
+/* Card */
 .comment-item {
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 12px;
-  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(17, 28, 51, 0.75);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
 }
 
 .comment-header {
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
+  justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
 }
 
+.header-left {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .user-name {
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .email {
-  color: #6b7280;
-  font-size: 0.9rem;
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 .date {
-  margin-left: auto;
-  color: #6b7280;
-  font-size: 0.85rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  white-space: nowrap;
 }
 
 .comment-text {
-  margin: 8px 0 10px;
-  line-height: 1.35;
+  margin: 10px 0 12px;
+  line-height: 1.45;
   word-break: break-word;
 }
 
+/* Attachments */
 .attachments {
   display: flex;
   flex-wrap: wrap;
@@ -190,53 +190,68 @@ export default {
   margin: 8px 0 10px;
 }
 
-.attachment-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .attachment-thumb {
   width: 160px;
   height: 120px;
   object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  border: 1px solid var(--border);
   cursor: zoom-in;
 }
 
 .attachment-link {
-  color: #2563eb;
+  color: var(--primary);
   text-decoration: underline;
+  font-weight: 700;
 }
 
+/* Actions */
+.comment-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+/* ✅ Reply always visible */
 .reply-btn {
-  display: inline-block;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 10px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+
+  background: rgba(96, 165, 250, 0.12);
+  color: var(--text);
+
   cursor: pointer;
+  font-weight: 900;
+  min-width: 140px;
+}
+.reply-btn:hover {
+  background: rgba(96, 165, 250, 0.18);
 }
 
 .reply-form {
-  margin-top: 10px;
-  padding: 10px;
-  border-radius: 10px;
-  background: #f9fafb;
-  border: 1px solid #eef2f7;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
 }
 
 .children {
   margin-top: 12px;
   padding-left: 14px;
-  border-left: 2px solid #eef2f7;
+  border-left: 2px solid rgba(34, 48, 74, 0.7);
 }
 
+/* Lightbox */
 .lightbox-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.78);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -247,8 +262,8 @@ export default {
 .lightbox-image {
   max-width: min(1100px, 95vw);
   max-height: 90vh;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
 }
 
 .lightbox-close {
@@ -258,8 +273,8 @@ export default {
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  border: none;
-  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.10);
   color: #fff;
   font-size: 26px;
   line-height: 44px;
