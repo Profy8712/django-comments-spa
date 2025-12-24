@@ -33,20 +33,15 @@ export function getAccessToken() {
 export function clearTokens() {
   localStorage.removeItem("access");
   localStorage.removeItem("refresh");
-  window.dispatchEvent(new Event("auth-changed"));
 }
 
 /**
  * Low-level request helper:
  * - adds Authorization if token exists (and withAuth=true)
  * - sends cookies (credentials include)
- * - if server returns 401 -> clear tokens and retry once WITHOUT Authorization (optional)
+ * - if server returns 401 -> clear tokens and retry once WITHOUT Authorization
  */
-async function request(
-  path,
-  options = {},
-  { withAuth = true, retryOn401 = true } = {}
-) {
+async function request(path, options = {}, { withAuth = true, retryOn401 = true } = {}) {
   const url = buildUrl(path);
 
   const headers = new Headers(options.headers || {});
@@ -102,13 +97,9 @@ function makeError(res, payload) {
 }
 
 export async function apiGet(path, opts = {}) {
-  const res = await request(
-    path,
-    { method: "GET", ...opts },
-    { withAuth: true, retryOn401: true }
-  );
-
+  const res = await request(path, { method: "GET", ...opts }, { withAuth: true, retryOn401: true });
   const payload = await readPayload(res);
+
   if (!res.ok) throw makeError(res, payload.data ?? payload.text);
   return payload.data ?? payload.text;
 }
@@ -135,7 +126,6 @@ export async function apiPostJson(path, data, opts = {}) {
 
 export async function apiPostForm(path, formData, opts = {}) {
   // NOTE: do not set Content-Type for FormData (browser sets boundary)
-  // IMPORTANT: never retry uploads on 401 (non-idempotent request)
   const res = await request(
     path,
     {
@@ -143,7 +133,7 @@ export async function apiPostForm(path, formData, opts = {}) {
       body: formData,
       ...opts,
     },
-    { withAuth: true, retryOn401: false } // <<< CRITICAL FIX
+    { withAuth: true, retryOn401: true }
   );
 
   const payload = await readPayload(res);
