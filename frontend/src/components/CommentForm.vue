@@ -141,6 +141,9 @@ export default {
   emits: ["created"],
   props: {
     parent_id: { type: [Number, String, null], default: null },
+
+    // NEW: App.vue increments this on login/logout to force full reset
+    resetKey: { type: Number, default: 0 },
   },
 
   data() {
@@ -163,6 +166,13 @@ export default {
     };
   },
 
+  watch: {
+    // NEW: hard reset when App says "auth changed"
+    resetKey() {
+      this.resetAll();
+    },
+  },
+
   mounted() {
     this._onAuthChangedBound = () => this.onAuthChanged();
     this.syncAuth();
@@ -176,6 +186,31 @@ export default {
   },
 
   methods: {
+    // NEW: full reset for logout (and optional for login)
+    async resetAll() {
+      this.errors = {};
+
+      // clear ALL user inputs (fixes "values not reset")
+      this.form.user_name = "";
+      this.form.email = "";
+      this.form.homepage = "";
+      this.form.text = "";
+
+      // clear files
+      this.clearFiles();
+
+      // sync auth and reset captcha fields accordingly
+      this.syncAuth();
+
+      if (!this.hasJwt) {
+        await this.loadCaptcha();
+      } else {
+        this.form.captcha_key = "";
+        this.form.captcha_value = "";
+        this.captcha = { key: "", image: "" };
+      }
+    },
+
     syncAuth() {
       this.hasJwt = !!getAccessToken();
       if (this.hasJwt) {
@@ -343,6 +378,7 @@ export default {
           }
         }
 
+        // keep user_name/email as you wish? (if you want always clear -> do it here)
         this.form.text = "";
         this.form.homepage = "";
         this.clearFiles();
@@ -368,7 +404,7 @@ export default {
 </script>
 
 <style scoped>
-/* IMPORTANT: no rgba fog in LIGHT (we use variables) */
+/* твой CSS без изменений */
 .comment-form {
   display: flex;
   flex-direction: column;
@@ -439,11 +475,7 @@ html[data-theme="light"] .form-textarea::placeholder {
   font-size: 13px;
 }
 
-.hint-text {
-  color: var(--muted);
-  font-size: 13px;
-}
-
+.hint-text,
 .hint-lock {
   color: var(--muted);
   font-size: 13px;
