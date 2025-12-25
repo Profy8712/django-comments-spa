@@ -5,7 +5,7 @@
         <label class="form-label">User Name *</label>
         <input
           class="form-input"
-          v-model.trim="form.user_name"
+          v-model.trim="form.user_name" :readonly="!!me"
           type="text"
           :disabled="submitting"
           placeholder=""
@@ -17,7 +17,7 @@
         <label class="form-label">Email *</label>
         <input
           class="form-input"
-          v-model.trim="form.email"
+          v-model.trim="form.email" :readonly="!!me"
           type="email"
           :disabled="submitting"
           placeholder=""
@@ -140,6 +140,7 @@ export default {
   name: "CommentForm",
   emits: ["created"],
   props: {
+    me: { type: Object, default: null },
     parent_id: { type: [Number, String, null], default: null },
 
     // NEW: App.vue increments this on login/logout to force full reset
@@ -167,6 +168,30 @@ export default {
   },
 
   watch: {
+    me: {
+      immediate: true,
+      handler(newMe, oldMe) {
+        const wasAuthed = !!oldMe;
+        const isAuthed = !!newMe;
+
+        // login -> autofill
+        if (!wasAuthed && isAuthed) {
+          const uname = newMe.username || newMe.user_name || "";
+          const email = newMe.email || "";
+          this.form.user_name = uname;
+          this.form.email = email;
+        }
+
+        // logout -> clear
+        if (wasAuthed && !isAuthed) {
+          const uname = this.me?.username || this.me?.user_name || "";
+      const email = this.me?.email || "";
+      this.form.user_name = uname;
+          this.form.email = email;
+        }
+      },
+    },
+
     // NEW: hard reset when App says "auth changed"
     resetKey() {
       this.resetAll();
@@ -191,8 +216,10 @@ export default {
       this.errors = {};
 
       // clear ALL user inputs (fixes "values not reset")
-      this.form.user_name = "";
-      this.form.email = "";
+      const uname = this.me?.username || this.me?.user_name || "";
+      const email = this.me?.email || "";
+      this.form.user_name = uname;
+      this.form.email = email;
       this.form.homepage = "";
       this.form.text = "";
 

@@ -20,7 +20,7 @@
 
     <section class="section">
       <h2>New comment</h2>
-      <CommentForm :reset-key="formResetKey" @created="handleCreated" />
+      <CommentForm :me="me" :reset-key="formResetKey" @created="handleCreated" />
     </section>
 
     <section class="section">
