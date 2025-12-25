@@ -66,8 +66,8 @@
 import { isAuthed, login, logout, getAccessToken } from "../api/auth";
 
 export default {
-  props: { me: { type: Object, default: null } },
   name: "AuthBar",
+  props: { me: { type: Object, default: null } },
   emits: ["auth-changed"],
 
   data() {
@@ -81,12 +81,13 @@ export default {
   },
 
   mounted() {
-    window.addEventListener("auth-changed", this.sync);
+    this._onAuthChangedBound = () => this.sync();
+    window.addEventListener("auth-changed", this._onAuthChangedBound);
     this.sync();
   },
 
   beforeUnmount() {
-    window.removeEventListener("auth-changed", this.sync);
+    window.removeEventListener("auth-changed", this._onAuthChangedBound);
   },
 
   methods: {
@@ -94,7 +95,12 @@ export default {
       this.authed = isAuthed();
       this.error = "";
       this.busy = false;
-      if (!this.authed) this.password = "";
+
+      // IMPORTANT: strict logout UX => clear BOTH fields when anonymous
+      if (!this.authed) {
+        this.username = "";
+        this.password = "";
+      }
     },
 
     async onLogin() {
@@ -109,7 +115,10 @@ export default {
       this.busy = true;
       try {
         await login(this.username, this.password);
+
+        // after successful login: clear password (safe), keep username (optional)
         this.password = "";
+
         this.$emit("auth-changed");
       } catch (e) {
         this.error = e?.message || "Login failed.";
@@ -120,7 +129,15 @@ export default {
 
     onLogout() {
       if (!this.authed) return;
+
       logout();
+
+      // clear fields immediately (no waiting for event)
+      this.username = "";
+      this.password = "";
+      this.error = "";
+      this.busy = false;
+
       this.$emit("auth-changed");
     },
 
@@ -292,5 +309,4 @@ html[data-theme="light"] .btn.danger {
   border: 1px solid rgba(239, 68, 68, 0.45);
   color: #ef4444;
 }
-
 </style>

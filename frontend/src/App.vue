@@ -15,7 +15,7 @@
 
     <section class="section">
       <h2>New comment</h2>
-      <CommentForm @created="handleCreated" />
+      <CommentForm :reset-key="formResetKey" @created="handleCreated" />
     </section>
 
     <section class="section">
@@ -121,6 +121,9 @@ export default {
       ordering: "-created_at",
       loading: false,
       ws: null,
+
+      // IMPORTANT: forces CommentForm reset on login/logout
+      formResetKey: 0,
     };
   },
 
@@ -183,6 +186,9 @@ export default {
     },
 
     handleAuthChanged() {
+      // IMPORTANT: reset CommentForm fields (fixes "values don't reset on logout")
+      this.formResetKey += 1;
+
       this.loadComments();
       this.loadMe();
     },
@@ -241,6 +247,7 @@ export default {
 </script>
 
 <style>
+/* твой style без изменений */
 .app {
   width: 100%;
   max-width: 1100px;
