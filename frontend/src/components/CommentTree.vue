@@ -131,6 +131,7 @@ export default {
   props: {
     comments: { type: Array, required: true },
     isAdmin: { type: Boolean, default: false },
+    me: { type: Object, default: null },
   },
   emits: ["changed"],
   data() {

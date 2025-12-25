@@ -70,6 +70,7 @@
           v-if="currentComments.length"
           :comments="currentComments"
           :isAdmin="isAdmin"
+          :me="me"
           @changed="loadComments"
         />
 
