@@ -5,7 +5,12 @@
         <div class="title">Comments SPA</div>
       </div>
 
-      <button class="theme-toggle" type="button" @click="toggleTheme" :aria-label="themeAria">
+      <button
+        class="theme-toggle"
+        type="button"
+        @click="toggleTheme"
+        :aria-label="themeAria"
+      >
         <span class="theme-ico" aria-hidden="true">{{ themeIcon }}</span>
         <span class="theme-text">{{ themeLabel }}</span>
       </button>
@@ -47,7 +52,13 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="comment in currentComments" :key="comment.id">
+            <tr
+              v-for="comment in currentComments"
+              :key="comment.id"
+              class="row-clickable"
+              @click="scrollToComment(comment.id)"
+              title="Scroll to comment"
+            >
               <td>{{ comment.user_name }}</td>
               <td>{{ comment.email }}</td>
               <td class="nowrap">{{ formatDate(comment.created_at) }}</td>
@@ -122,8 +133,11 @@ export default {
       loading: false,
       ws: null,
 
-      // IMPORTANT: forces CommentForm reset on login/logout
+      // forces CommentForm reset on login/logout
       formResetKey: 0,
+
+      // highlight timeout holder
+      _highlightTimer: null,
     };
   },
 
@@ -186,7 +200,7 @@ export default {
     },
 
     handleAuthChanged() {
-      // IMPORTANT: reset CommentForm fields (fixes "values don't reset on logout")
+      // reset CommentForm fields (fixes "values don't reset on logout")
       this.formResetKey += 1;
 
       this.loadComments();
@@ -206,6 +220,26 @@ export default {
     formatDate(value) {
       if (!value) return "";
       return new Date(value).toLocaleString();
+    },
+
+    // NEW: click in table -> scroll to comment card in tree + highlight it
+    scrollToComment(commentId) {
+      const el = document.getElementById(`comment-${commentId}`);
+      if (!el) return;
+
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      // remove highlight from previous
+      document.querySelectorAll(".comment-highlight").forEach((n) => {
+        n.classList.remove("comment-highlight");
+      });
+
+      el.classList.add("comment-highlight");
+
+      if (this._highlightTimer) clearTimeout(this._highlightTimer);
+      this._highlightTimer = setTimeout(() => {
+        el.classList.remove("comment-highlight");
+      }, 1600);
     },
 
     setupWebSocket() {
@@ -242,12 +276,12 @@ export default {
 
   beforeUnmount() {
     if (this.ws) this.ws.close();
+    if (this._highlightTimer) clearTimeout(this._highlightTimer);
   },
 };
 </script>
 
 <style>
-/* твой style без изменений */
 .app {
   width: 100%;
   max-width: 1100px;
@@ -385,5 +419,26 @@ html[data-theme="light"] .btn-outline:hover { background: #f1f5ff; }
   align-items: center;
   justify-content: center;
   gap: 10px;
+}
+
+/* NEW: table row clickable affordance */
+.row-clickable {
+  cursor: pointer;
+}
+.row-clickable:hover td {
+  background: rgba(96, 165, 250, 0.08);
+}
+html[data-theme="light"] .row-clickable:hover td {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+/* NEW: highlight class added on target comment element */
+.comment-highlight {
+  outline: 2px solid rgba(96, 165, 250, 0.75);
+  background: rgba(96, 165, 250, 0.10) !important;
+}
+html[data-theme="light"] .comment-highlight {
+  outline: 2px solid rgba(37, 99, 235, 0.55);
+  background: rgba(37, 99, 235, 0.08) !important;
 }
 </style>

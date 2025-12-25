@@ -1,6 +1,11 @@
 <template>
   <div class="comment-tree">
-    <div v-for="comment in comments" :key="comment.id" class="comment-item">
+    <div
+      v-for="comment in comments"
+      :key="comment.id"
+      class="comment-item"
+      :id="`comment-${comment.id}`"
+    >
       <div class="comment-header">
         <div class="header-left">
           <strong class="user-name">{{ comment.user_name }}</strong>
@@ -82,11 +87,10 @@
 
 <script>
 import CommentForm from "./CommentForm.vue";
-import { buildUrl, apiGet } from "../api/index";
+import { buildUrl } from "../api/index";
 import { renderSafeHtml } from "../helpers/render";
 
-// We reuse apiGet's auth headers by calling it with a DELETE through fetch:
-// (api/index currently has apiGet/apiPostJson/apiPostForm only)
+// We reuse auth header by doing plain fetch DELETE:
 async function apiDelete(path) {
   const base = buildUrl(path);
   const token = localStorage.getItem("access");
@@ -101,7 +105,6 @@ async function apiDelete(path) {
     headers,
   });
 
-  // try parse json error if any
   if (!res.ok) {
     const ct = res.headers.get("content-type") || "";
     if (ct.includes("application/json")) {
@@ -181,7 +184,6 @@ export default {
     async onDelete(commentId) {
       if (!this.isAdmin) return;
 
-      // clear previous error
       this.errorById = { ...this.errorById, [commentId]: "" };
 
       const ok = window.confirm("Delete this comment? This action cannot be undone.");
@@ -191,7 +193,6 @@ export default {
 
       try {
         await apiDelete(`/api/comments/admin/comments/${commentId}/`);
-        // refresh list
         this.$emit("changed");
       } catch (e) {
         const msg =
@@ -215,7 +216,6 @@ export default {
   gap: 12px;
 }
 
-/* Card (base = uses variables; light becomes solid) */
 .comment-item {
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -224,12 +224,10 @@ export default {
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
 }
 
-/* Dark keeps "glassy" look without affecting text */
 html:not([data-theme="light"]) .comment-item {
   background: rgba(17, 28, 51, 0.75);
 }
 
-/* In light, shadow should be softer */
 html[data-theme="light"] .comment-item {
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
 }
@@ -307,28 +305,22 @@ html[data-theme="light"] .comment-item {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   padding: 10px 18px;
   border-radius: 14px;
   border: 1px solid rgba(96, 165, 250, 0.35);
-
   background: rgba(96, 165, 250, 0.12);
   color: var(--text);
-
   cursor: pointer;
   font-weight: 900;
   min-width: 140px;
 }
-
 .reply-btn:hover {
   background: rgba(96, 165, 250, 0.18);
 }
-
 html[data-theme="light"] .reply-btn {
   background: rgba(37, 99, 235, 0.10);
   border-color: rgba(37, 99, 235, 0.30);
 }
-
 html[data-theme="light"] .reply-btn:hover {
   background: rgba(37, 99, 235, 0.14);
 }
@@ -338,23 +330,18 @@ html[data-theme="light"] .reply-btn:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   padding: 10px 16px;
   border-radius: 14px;
   border: 1px solid rgba(248, 113, 113, 0.45);
-
   background: rgba(248, 113, 113, 0.12);
   color: var(--text);
-
   cursor: pointer;
   font-weight: 900;
   min-width: 110px;
 }
-
 .delete-btn:hover {
   background: rgba(248, 113, 113, 0.18);
 }
-
 .delete-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -368,7 +355,7 @@ html[data-theme="light"] .reply-btn:hover {
   font-weight: 800;
 }
 
-/* Reply form panel (NO fog in light) */
+/* Reply form panel */
 .reply-form {
   margin-top: 12px;
   padding: 12px;
@@ -376,8 +363,6 @@ html[data-theme="light"] .reply-btn:hover {
   background: var(--surface-2);
   border: 1px solid var(--border);
 }
-
-/* Dark keeps old tone */
 html:not([data-theme="light"]) .reply-form {
   background: rgba(15, 23, 42, 0.60);
 }
@@ -388,8 +373,6 @@ html:not([data-theme="light"]) .reply-form {
   padding-left: 14px;
   border-left: 2px solid var(--border);
 }
-
-/* Dark keeps stronger line */
 html:not([data-theme="light"]) .children {
   border-left-color: rgba(34, 48, 74, 0.7);
 }
