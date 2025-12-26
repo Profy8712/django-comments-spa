@@ -48,7 +48,7 @@
           <template v-for="a in c.attachments" :key="a.id">
             <img
               v-if="isImage(a.file)"
-              class="attach-img"
+              class="attach-img" @click.stop="openLightboxImage(a.file, filenameFromUrl(a.file))"
               :src="a.file"
               alt="attachment"
               loading="lazy"
@@ -62,6 +62,7 @@
             >
               {{ filenameFromUrl(a.file) }}
             </a>
+
           </template>
         </div>
       </div>
@@ -96,14 +97,22 @@
       </div>
     </div>
   </div>
+  <Lightbox
+      :src="lightboxSrc"
+    :alt="lightboxAlt"
+    :type="lightboxType"
+  />
+
 </template>
 
 <script>
 import CommentForm from "./CommentForm.vue";
+import Lightbox from "./Lightbox.vue";
+
 
 export default {
   name: "CommentTree",
-  components: { CommentForm },
+  components: { CommentForm, Lightbox },
 
   props: {
     comments: { type: Array, default: () => [] },
@@ -117,6 +126,10 @@ export default {
 
   data() {
     return {
+      lightboxOpen: false,
+      lightboxAlt: "",
+      lightboxType: "image",
+
       replyOpenId: null,
       highlightId: null,
       _hlTimer: null
@@ -128,6 +141,13 @@ export default {
   },
 
   methods: {
+    openLightboxImage(src, alt = "Attachment") {
+      if (!src) return;
+      this.lightboxType = "image";
+      this.lightboxAlt = String(alt || "Attachment");
+      this.lightboxOpen = true;
+    },
+
     toggleReply(id) {
       if (id === null) {
         this.replyOpenId = null;
@@ -297,6 +317,8 @@ html:not([data-theme="light"]) .comment-head {
 }
 
 .attach-img {
+  cursor: pointer;
+
   width: 180px;
   height: auto;
   border-radius: 12px;
