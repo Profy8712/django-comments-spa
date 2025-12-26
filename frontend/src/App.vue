@@ -199,7 +199,20 @@ export default {
     },
   },
 
+
   methods: {
+    scrollToComment(id) {
+      if (!id) return;
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`c-${id}`) || document.querySelector(`[data-comment-id="${id}"]`);
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.location.hash = `c-${id}`;
+        const card = el.closest(".comment-item") || el; card.classList.add("flash-highlight");
+        setTimeout(() => card.classList.remove("flash-highlight"), 1600);
+      });
+    },
+
     setTheme(theme) {
       this.theme = theme === THEMES.LIGHT ? THEMES.LIGHT : THEMES.DARK;
       applyThemeToDom(this.theme);
@@ -250,7 +263,7 @@ export default {
 
       this.$nextTick(() => {
         const el = document.getElementById(`comment-${this.lastScrollToId}`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
         this.lastScrollToId = null;
       });
     },
@@ -276,23 +289,6 @@ export default {
       return new Date(value).toLocaleString();
     },
 
-    scrollToComment(commentId) {
-      const el = document.getElementById(`comment-${commentId}`);
-      if (!el) return;
-
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-
-      document.querySelectorAll(".comment-highlight").forEach((n) => {
-        n.classList.remove("comment-highlight");
-      });
-
-      el.classList.add("comment-highlight");
-
-      if (this._highlightTimer) clearTimeout(this._highlightTimer);
-      this._highlightTimer = setTimeout(() => {
-        el.classList.remove("comment-highlight");
-      }, 1600);
-    },
 
     setupWebSocket() {
       const protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -320,6 +316,15 @@ export default {
   },
 
   async mounted() {
+    const hash = String(window.location.hash || "");
+    const m = hash.match(/^#c-(\d+)$/);
+    if (m) {
+      const id = Number(m[1]);
+      if (Number.isFinite(id)) {
+        setTimeout(() => this.scrollToComment(id), 0);
+      }
+    }
+
     this.initTheme();
     await this.loadComments();
     await this.loadMe();
@@ -436,7 +441,6 @@ html[data-theme="light"] .section {
   background: var(--surface-3);
   border: 1px solid var(--border);
   border-radius: 14px;
-  overflow: hidden;
   margin-bottom: 12px;
 }
 

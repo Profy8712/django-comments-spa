@@ -54,6 +54,8 @@ html[data-theme="light"] {
 
 html, body { height: 100%; margin: 0; }
 
+/* ✅ scroll safety */
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -116,3 +118,81 @@ code {
 
 html[data-theme="light"] .controls select option { background: #ffffff; color: #0f172a; }
 html[data-theme="light"] .controls select option:checked { background: #e8eefc; color: #0f172a; }
+
+/* =========================================================
+   Extra safe UI utilities
+   ========================================================= */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.divider {
+  border-top: 1px solid var(--border);
+}
+
+/* old ghost (can stay, but we won’t use it in CommentTree) */
+.btn-ghost {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 800;
+  padding: 6px 10px;
+  border-radius: 12px;
+}
+.btn-ghost:hover {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+/* ✅ calm forum-like action buttons */
+.btn-link {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+
+  padding: 4px 8px;
+  border-radius: 10px;
+
+  font-weight: 700;
+  font-size: 0.92rem;
+
+  /* light theme: subtle */
+  color: rgba(15, 23, 42, 0.55);
+}
+
+/* dark theme */
+html:not([data-theme="light"]) .btn-link {
+  color: rgba(245, 248, 255, 0.72);
+}
+
+.btn-link:hover {
+  background: rgba(15, 23, 42, 0.03) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+html:not([data-theme="light"]) .btn-link:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+.btn-link-danger {
+  color: rgba(225, 29, 72, 0.78);
+}
+
+.btn-link-danger:hover {
+  background: rgba(225, 29, 72, 0.06) !important;
+  border-color: rgba(225, 29, 72, 0.16) !important;
+}
+
+/* ensure page scroll works */
+html, body { height: auto; }
+body { overflow-y: auto; }
+
+/* flash highlight (used by App.vue scrollToComment) */
+.comment-item.flash-highlight {
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16) !important;
+  background-color: rgba(148, 163, 184, 0.10) !important;
+}
+

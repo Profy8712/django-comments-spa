@@ -1,5 +1,4 @@
 // frontend/src/api/comments.js
-
 import { apiGet, apiPostJson } from "./index";
 
 function getAccessToken() {
@@ -18,8 +17,12 @@ function normalizeParentId(parentId) {
 }
 
 export function fetchComments(page = 1, ordering = "-created_at") {
+  // ✅ guard: avoid ?page=[object Object] -> "Invalid page."
+  const p = Number(page);
+  const safePage = Number.isFinite(p) && p > 0 ? p : 1;
+
   const params = new URLSearchParams();
-  params.set("page", String(page));
+  params.set("page", String(safePage));
   if (ordering) params.set("ordering", String(ordering));
 
   return apiGet(`/api/comments/?${params.toString()}`);
@@ -28,9 +31,6 @@ export function fetchComments(page = 1, ordering = "-created_at") {
 export function createComment(data, parentId = null) {
   const payload = { ...(data || {}) };
 
-  // Reply support:
-  // - if payload already has parent_id or parent -> use it
-  // - else use optional parentId arg
   const pidFromPayload = normalizeParentId(payload.parent_id ?? payload.parent ?? null);
   const pidFromArg = normalizeParentId(parentId);
   const pid = pidFromPayload !== null ? pidFromPayload : pidFromArg;

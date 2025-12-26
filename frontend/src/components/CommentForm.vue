@@ -7,7 +7,6 @@
           class="form-input"
           v-model.trim="form.user_name"
           type="text"
-
           :disabled="submitting"
           placeholder=""
         />
@@ -20,7 +19,6 @@
           class="form-input"
           v-model.trim="form.email"
           type="email"
-
           :disabled="submitting"
           placeholder=""
         />
@@ -127,6 +125,10 @@
       <button class="btn" type="submit" :disabled="submitting">
         {{ submitting ? "Sending..." : "Send comment" }}
       </button>
+
+      <button class="btn-cancel" type="button" @click="$emit('cancel')" v-if="parentId !== null" :disabled="submitting">
+        Cancel
+      </button>
     </div>
 
     <p v-if="errors.non_field" class="error-text">{{ errors.non_field }}</p>
@@ -140,11 +142,11 @@ import { uploadAttachment } from "../api/attachments";
 
 export default {
   name: "CommentForm",
-  emits: ["created"],
+  emits: ["changed", "cancel"],
   props: {
     me: { type: Object, default: null },
-    parent_id: { type: [Number, String, null], default: null },
-    resetKey: { type: Number, default: 0 },
+    parentId: { type: [Number, String, null], default: null },
+    resetKey: { type: Number, default: 0 }
   },
 
   data() {
@@ -163,27 +165,27 @@ export default {
         homepage: "",
         text: "",
         captcha_key: "",
-        captcha_value: "",
-      },
+        captcha_value: ""
+      }
     };
   },
 
   watch: {
-    parent_id: {
+    parentId: {
       immediate: true,
       handler(val) {
         this.parentIdInternal = (val !== null && val !== undefined && val !== "") ? Number(val) : null;
-      },
+      }
     },
     me: {
       immediate: true,
       handler() {
         this.prefillFromMe();
-      },
+      }
     },
     resetKey() {
       this.resetAll();
-    },
+    }
   },
 
   mounted() {
@@ -313,7 +315,7 @@ export default {
       const files = Array.from(e?.target?.files || []);
       this.selectedFiles = files.map((file) => ({
         file,
-        error: this.validateFile(file),
+        error: this.validateFile(file)
       }));
     },
 
@@ -385,7 +387,7 @@ export default {
           user_name: this.form.user_name,
           email: this.form.email,
           homepage: this.form.homepage || null,
-          text: this.form.text,
+          text: this.form.text
         };
 
         const parentId = this.parentIdInternal;
@@ -414,8 +416,7 @@ export default {
 
         if (!this.hasJwt) await this.loadCaptcha();
 
-        // ✅ single event (no duplicate emit)
-        this.$emit("created", { created, parentId });
+        this.$emit("changed", { created, parentId });
       } catch (err) {
         this.errors = this.mapApiErrors(err);
         if (!this.hasJwt && (this.errors.captcha_value || this.errors.captcha_key)) {
@@ -424,13 +425,13 @@ export default {
       } finally {
         this.submitting = false;
       }
-    },
-  },
+    }
+  }
 };
 </script>
 
 <style scoped>
-/* твой CSS без изменений (оставляю как был) */
+/* оставил твой CSS из файла как есть, + добавил кнопку cancel */
 .comment-form {
   display: flex;
   flex-direction: column;
@@ -568,7 +569,7 @@ html[data-theme="light"] .captcha-reload:hover { background: rgba(37, 99, 235, 0
 
 .captcha-input { flex: 1; min-width: 220px; }
 
-.form-actions { display: flex; justify-content: center; margin-top: 4px; }
+.form-actions { display: flex; justify-content: center; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
 
 .btn {
   border: 1px solid rgba(96, 165, 250, 0.35);
@@ -589,4 +590,16 @@ html[data-theme="light"] .btn {
   border-color: rgba(37, 99, 235, 0.28);
 }
 html[data-theme="light"] .btn:hover { background: rgba(37, 99, 235, 0.14); }
+
+.btn-cancel {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 16px;
+  padding: 12px 18px;
+  cursor: pointer;
+  font-weight: 900;
+}
+.btn-cancel:hover { background: rgba(255, 255, 255, 0.10); }
+html[data-theme="light"] .btn-cancel:hover { background: rgba(15, 23, 42, 0.04); }
 </style>
