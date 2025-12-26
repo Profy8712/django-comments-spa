@@ -19,7 +19,7 @@
             <span class="muted dot">•</span>
             <span class="time muted">{{ formatDate(c.created_at || c.created || c.createdAt) }}</span>
           </div>
-          <div class="line2" v-if="c.email">
+          <div class="line2" >
             <span class="email muted">{{ c.email }}</span>
           </div>
         </div>
@@ -28,7 +28,7 @@
           <button type="button" class="btn-link" @click="toggleReply(c.id)">Reply</button>
 
           <button
-            v-if="isAdmin"
+            
             class="btn-link btn-link-danger"
             type="button"
             @click="onDelete(c.id)"
@@ -44,7 +44,7 @@
         <div class="comment-text">{{ c.text }}</div>
 
         <!-- Attachments -->
-        <div v-if="c.attachments && c.attachments.length" class="attach">
+          <div v-if="c.attachments && c.attachments.length" class="attach">
           <template v-for="a in c.attachments" :key="a.id">
             <img
               v-if="isImage(a.file)"
@@ -69,7 +69,7 @@
 
       <!-- Reply form -->
       <div v-if="replyOpenId === c.id" class="reply-form">
-        <div v-if="c.text" class="reply-quote">
+        <div  class="reply-quote">
           {{ shorten(c.text) }}
         </div>
 
@@ -84,7 +84,7 @@
       </div>
 
       <!-- Children -->
-      <div v-if="c.children && c.children.length" class="children">
+      <div  class="children">
         <CommentTree
           :comments="c.children"
           :isAdmin="isAdmin"
@@ -97,11 +97,12 @@
       </div>
     </div>
   </div>
-  <Lightbox
+    <Lightbox
+      v-model="lightboxOpen"
       :src="lightboxSrc"
-    :alt="lightboxAlt"
-    :type="lightboxType"
-  />
+      :alt="lightboxAlt"
+      :type="lightboxType"
+    />
 
 </template>
 
@@ -143,6 +144,7 @@ export default {
   methods: {
     openLightboxImage(src, alt = "Attachment") {
       if (!src) return;
+      this.lightboxSrc = String(src);
       this.lightboxType = "image";
       this.lightboxAlt = String(alt || "Attachment");
       this.lightboxOpen = true;
@@ -317,13 +319,14 @@ html:not([data-theme="light"]) .comment-head {
 }
 
 .attach-img {
-  cursor: pointer;
-
-  width: 180px;
-  height: auto;
+  cursor: zoom-in;
+  width: 140px;
+  height: 105px;
+  object-fit: cover;
   border-radius: 12px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.04);
+  display: block;
 }
 
 .attach-item {
