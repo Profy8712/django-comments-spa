@@ -30,7 +30,7 @@
         <div class="controls">
           <label>Sort by:</label>
           <select v-model="ordering" @change="onOrderingChange">
-            <option value="created_at">Newest first (LIFO)</option>
+            <option value="-created_at">Newest first (LIFO)</option>
             <option value="created_at">Oldest first</option>
             <option value="user_name">User name A-Z</option>
             <option value="-user_name">User name Z-A</option>
@@ -155,7 +155,7 @@ export default {
 
       comments: null,
       page: 1,
-      ordering: "created_at",
+      ordering: "-created_at",
       loading: false,
 
       ws: null,

@@ -125,7 +125,7 @@ export async function apiPostJson(path, data, opts = {}) {
       body: JSON.stringify(data ?? {}),
       ...opts,
     },
-    { withAuth: true, retryOn401: true }
+    { withAuth: true, retryOn401: false }
   );
 
   const payload = await readPayload(res);
