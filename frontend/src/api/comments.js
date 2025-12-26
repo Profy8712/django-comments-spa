@@ -2,9 +2,19 @@
 
 import { apiGet, apiPostJson } from "./index";
 
-function hasToken() {
+function getAccessToken() {
   const t = localStorage.getItem("access");
-  return !!(t && t.trim());
+  return t && t.trim() ? t.trim() : null;
+}
+
+function hasToken() {
+  return !!getAccessToken();
+}
+
+function normalizeParentId(parentId) {
+  if (parentId === null || parentId === undefined || parentId === "") return null;
+  const n = Number(parentId);
+  return Number.isFinite(n) ? n : null;
 }
 
 export function fetchComments(page = 1, ordering = "-created_at") {
@@ -16,8 +26,22 @@ export function fetchComments(page = 1, ordering = "-created_at") {
 }
 
 export function createComment(data, parentId = null) {
-  const payload = { ...data };
-  if (parentId) payload.parent = parentId;
+  const payload = { ...(data || {}) };
+
+  // Reply support:
+  // - if payload already has parent_id or parent -> use it
+  // - else use optional parentId arg
+  const pidFromPayload = normalizeParentId(payload.parent_id ?? payload.parent ?? null);
+  const pidFromArg = normalizeParentId(parentId);
+  const pid = pidFromPayload !== null ? pidFromPayload : pidFromArg;
+
+  if (pid !== null) {
+    payload.parent = pid;
+    delete payload.parent_id;
+  } else {
+    delete payload.parent;
+    delete payload.parent_id;
+  }
 
   // If JWT exists -> do NOT send captcha fields at all
   if (hasToken()) {

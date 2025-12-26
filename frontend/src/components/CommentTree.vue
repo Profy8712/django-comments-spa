@@ -5,31 +5,40 @@
       :key="comment.id"
       class="comment-item"
       :id="`comment-${comment.id}`"
+      :class="{
+        'is-child': depth > 0,
+        'scroll-highlight': highlightedId === comment.id,
+      }"
     >
       <div class="comment-header">
         <div class="header-left">
           <strong class="user-name">{{ comment.user_name }}</strong>
           <span class="email">{{ comment.email }}</span>
         </div>
+
         <span class="date">{{ formatDate(comment.created_at) }}</span>
       </div>
 
       <div class="comment-text" v-html="renderText(comment.text)"></div>
 
-      <div v-if="comment.attachments && comment.attachments.length" class="attachments">
+      <!-- Attachments -->
+      <div
+        v-if="comment.attachments && comment.attachments.length"
+        class="attachments"
+      >
         <div v-for="a in comment.attachments" :key="a.id" class="attachment-item">
           <img
             v-if="isImageAttachment(a)"
             class="attachment-thumb"
-            :src="resolveFileUrl(a.file)"
+            :src="resolveFileUrl(pickAttachmentFile(a))"
             alt="Attachment image"
-            @click="openLightbox(resolveFileUrl(a.file))"
+            @click="openLightbox(resolveFileUrl(pickAttachmentFile(a)))"
           />
 
           <a
             v-else
             class="attachment-link"
-            :href="resolveFileUrl(a.file)"
+            :href="resolveFileUrl(pickAttachmentFile(a))"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -38,6 +47,7 @@
         </div>
       </div>
 
+      <!-- Actions -->
       <div class="comment-actions">
         <button type="button" class="reply-btn" @click="toggleReply(comment.id)">
           {{ replyTo === comment.id ? "Cancel reply" : "Reply" }}
@@ -58,19 +68,30 @@
         {{ errorById[comment.id] }}
       </div>
 
+      <!-- Reply form -->
       <div v-if="replyTo === comment.id" class="reply-form">
-        <CommentForm :parent_id="comment.id" @created="handleCreated" />
+        <CommentForm
+          :me="me"
+          :parent_id="comment.id"
+          :reset-key="resetKey"
+          @created="(payload) => handleCreated(payload, comment.id)"
+        />
       </div>
 
+      <!-- Children -->
       <div v-if="comment.children && comment.children.length" class="children">
         <CommentTree
           :comments="comment.children"
           :isAdmin="isAdmin"
+          :me="me"
+          :reset-key="resetKey"
+          :depth="depth + 1"
           @changed="handleCreated"
         />
       </div>
     </div>
 
+    <!-- Lightbox -->
     <div v-if="lightboxSrc" class="lightbox-overlay" @click="closeLightbox">
       <img :src="lightboxSrc" alt="Attachment preview" class="lightbox-image" />
       <button
@@ -90,71 +111,129 @@ import CommentForm from "./CommentForm.vue";
 import { buildUrl } from "../api/index";
 import { renderSafeHtml } from "../helpers/render";
 
-// We reuse auth header by doing plain fetch DELETE:
-async function apiDelete(path) {
-  const base = buildUrl(path);
+/**
+ * Admin delete helper.
+ * We try a couple of common endpoints to be compatible with your backend variants.
+ * - /api/comments/admin/comments/<id>/
+ * - /api/comments/<id>/
+ */
+async function apiDeleteComment(commentId) {
   const token = localStorage.getItem("access");
 
   const headers = new Headers();
   headers.set("Accept", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(base, {
-    method: "DELETE",
-    credentials: "include",
-    headers,
-  });
+  const candidates = [
+    `/api/comments/admin/comments/${commentId}/`,
+    `/api/comments/${commentId}/`,
+  ];
 
-  if (!res.ok) {
-    const ct = res.headers.get("content-type") || "";
-    if (ct.includes("application/json")) {
-      const data = await res.json().catch(() => null);
-      const msg = data?.detail || JSON.stringify(data);
+  let lastErr = null;
+
+  for (const path of candidates) {
+    const url = buildUrl(path);
+
+    try {
+      const res = await fetch(url, {
+        method: "DELETE",
+        credentials: "include",
+        headers,
+      });
+
+      if (res.ok) return true;
+
+      const ct = res.headers.get("content-type") || "";
+      if (ct.includes("application/json")) {
+        const data = await res.json().catch(() => null);
+        const msg = data?.detail || JSON.stringify(data);
+        const err = new Error(`HTTP ${res.status}`);
+        err.status = res.status;
+        err.payload = msg;
+        lastErr = err;
+        continue;
+      }
+
+      const text = await res.text().catch(() => "");
       const err = new Error(`HTTP ${res.status}`);
       err.status = res.status;
-      err.payload = msg;
-      throw err;
+      err.payload = text;
+      lastErr = err;
+    } catch (e) {
+      lastErr = e;
     }
-    const text = await res.text().catch(() => "");
-    const err = new Error(`HTTP ${res.status}`);
-    err.status = res.status;
-    err.payload = text;
-    throw err;
   }
 
-  return true;
+  throw lastErr || new Error("Failed to delete");
 }
 
 export default {
   name: "CommentTree",
   components: { CommentForm },
+
   props: {
     comments: { type: Array, required: true },
     isAdmin: { type: Boolean, default: false },
     me: { type: Object, default: null },
+    resetKey: { type: Number, default: 0 },
+    depth: { type: Number, default: 0 },
   },
+
   emits: ["changed"],
+
   data() {
     return {
       replyTo: null,
+
+      // attachments preview
       lightboxSrc: null,
+
+      // delete state
       deletingId: null,
       errorById: {},
+
+      // scroll highlight
+      highlightedId: null,
+      _hlTimer: null,
     };
   },
+
+  beforeUnmount() {
+    if (this._hlTimer) clearTimeout(this._hlTimer);
+  },
+
   methods: {
-    async handleCreated() {
-      this.replyTo = null;
-      this.$emit("changed");
-    },
-
-    toggleReply(commentId) {
-      this.replyTo = this.replyTo === commentId ? null : commentId;
-    },
-
+    // ---------- UI helpers ----------
     formatDate(value) {
       if (!value) return "";
       return new Date(value).toLocaleString();
+    },
+
+    renderText(text) {
+      return renderSafeHtml(text || "");
+    },
+
+    resolveFileUrl(file) {
+      if (!file) return "";
+      if (String(file).startsWith("http://") || String(file).startsWith("https://")) {
+        return file;
+      }
+      // backend often returns "/media/.."
+      const p = String(file).startsWith("/") ? String(file) : `/${file}`;
+      return buildUrl(p);
+    },
+
+    pickAttachmentFile(a) {
+      // keep compatible with different serializer shapes
+      return a?.file || a?.url || a?.file_url || "";
+    },
+
+    isImageAttachment(a) {
+      const f = this.pickAttachmentFile(a);
+      const lower = String(f).toLowerCase();
+      return [".jpg", ".jpeg", ".png", ".gif", ".webp"].some((ext) =>
+        lower.endsWith(ext)
+      );
     },
 
     openLightbox(src) {
@@ -165,23 +244,45 @@ export default {
       this.lightboxSrc = null;
     },
 
-    resolveFileUrl(file) {
-      if (!file) return "";
-      if (file.startsWith("http://") || file.startsWith("https://")) return file;
-      return buildUrl(file.startsWith("/") ? file : `/${file}`);
+    toggleReply(commentId) {
+      this.replyTo = this.replyTo === commentId ? null : commentId;
     },
 
-    isImageAttachment(attachment) {
-      const f = attachment?.file || "";
-      const lower = String(f).toLowerCase();
-      const exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
-      return exts.some((ext) => lower.endsWith(ext));
+    // ---------- Main "changed" flow ----------
+    handleCreated(payloadOrNothing, parentIdFromTree) {
+      // close reply form in current node
+      this.replyTo = null;
+
+      // bubble up to App.vue
+      this.$emit("changed", payloadOrNothing);
+
+      // scroll target:
+      // prefer created comment id, fallback to parent
+      const targetId =
+        payloadOrNothing?.id ||
+        payloadOrNothing?.commentId ||
+        payloadOrNothing?.parentId ||
+        payloadOrNothing?.parent_id ||
+        parentIdFromTree ||
+        null;
+
+      if (!targetId) return;
+
+      this.$nextTick(() => {
+        const el = document.getElementById(`comment-${targetId}`);
+        if (!el) return;
+
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+        this.highlightedId = targetId;
+        if (this._hlTimer) clearTimeout(this._hlTimer);
+        this._hlTimer = setTimeout(() => {
+          this.highlightedId = null;
+        }, 1200);
+      });
     },
 
-    renderText(text) {
-      return renderSafeHtml(text || "");
-    },
-
+    // ---------- Admin delete ----------
     async onDelete(commentId) {
       if (!this.isAdmin) return;
 
@@ -193,13 +294,14 @@ export default {
       this.deletingId = commentId;
 
       try {
-        await apiDelete(`/api/comments/admin/comments/${commentId}/`);
-        this.$emit("changed");
+        await apiDeleteComment(commentId);
+        // tell App.vue to reload comments
+        this.$emit("changed", { deletedId: commentId });
       } catch (e) {
         const msg =
           e?.payload ||
-          (e?.status === 403 ? "Forbidden (admin only)" : "") ||
           (e?.status === 401 ? "Unauthorized" : "") ||
+          (e?.status === 403 ? "Forbidden (admin only)" : "") ||
           "Failed to delete";
         this.errorById = { ...this.errorById, [commentId]: msg };
       } finally {
@@ -225,14 +327,33 @@ export default {
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
 }
 
-html:not([data-theme="light"]) .comment-item {
-  background: rgba(17, 28, 51, 0.75);
+/* ✅ IMPORTANT: visually different children (replies) */
+.comment-item.is-child {
+  margin-left: 36px;
+  padding: 12px 12px 12px 16px;
+  border-left: 3px solid var(--border);
+  background: var(--surface-2);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+}
+
+html[data-theme="light"] .comment-item.is-child {
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+
+/* highlight after scroll */
+.scroll-highlight {
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35),
+    0 10px 26px rgba(0, 0, 0, 0.18);
+  border-color: rgba(96, 165, 250, 0.55);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 html[data-theme="light"] .comment-item {
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
 }
 
+/* Header */
 .comment-header {
   display: flex;
   align-items: baseline;
@@ -252,15 +373,10 @@ html[data-theme="light"] .comment-item {
   font-weight: 900;
 }
 
-.email {
-  color: var(--muted);
-  font-size: 0.92rem;
-}
-
+.email,
 .date {
   color: var(--muted);
-  font-size: 0.88rem;
-  white-space: nowrap;
+  font-size: 0.9rem;
 }
 
 .comment-text {
@@ -275,6 +391,11 @@ html[data-theme="light"] .comment-item {
   flex-wrap: wrap;
   gap: 10px;
   margin: 8px 0 10px;
+}
+
+.attachment-item {
+  display: inline-flex;
+  align-items: center;
 }
 
 .attachment-thumb {
@@ -301,7 +422,6 @@ html[data-theme="light"] .comment-item {
   margin-top: 6px;
 }
 
-/* Reply button */
 .reply-btn {
   display: inline-flex;
   align-items: center;
@@ -319,14 +439,13 @@ html[data-theme="light"] .comment-item {
   background: rgba(96, 165, 250, 0.18);
 }
 html[data-theme="light"] .reply-btn {
-  background: rgba(37, 99, 235, 0.10);
-  border-color: rgba(37, 99, 235, 0.30);
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.3);
 }
 html[data-theme="light"] .reply-btn:hover {
   background: rgba(37, 99, 235, 0.14);
 }
 
-/* Delete button */
 .delete-btn {
   display: inline-flex;
   align-items: center;
@@ -348,7 +467,6 @@ html[data-theme="light"] .reply-btn:hover {
   cursor: not-allowed;
 }
 
-/* Inline error below actions */
 .action-error {
   margin-top: 8px;
   text-align: center;
@@ -356,7 +474,6 @@ html[data-theme="light"] .reply-btn:hover {
   font-weight: 800;
 }
 
-/* Reply form panel */
 .reply-form {
   margin-top: 12px;
   padding: 12px;
@@ -364,18 +481,9 @@ html[data-theme="light"] .reply-btn:hover {
   background: var(--surface-2);
   border: 1px solid var(--border);
 }
-html:not([data-theme="light"]) .reply-form {
-  background: rgba(15, 23, 42, 0.60);
-}
 
-/* Children indentation line */
 .children {
   margin-top: 12px;
-  padding-left: 14px;
-  border-left: 2px solid var(--border);
-}
-html:not([data-theme="light"]) .children {
-  border-left-color: rgba(34, 48, 74, 0.7);
 }
 
 /* Lightbox */
@@ -405,7 +513,7 @@ html:not([data-theme="light"]) .children {
   height: 44px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.1);
   color: #fff;
   font-size: 26px;
   line-height: 44px;

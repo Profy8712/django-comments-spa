@@ -2,11 +2,12 @@
   <form class="comment-form" @submit.prevent="onSubmit">
     <div class="grid2">
       <div class="form-group">
-        <label class="form-label">User Name *</label>
+        <label class="form-label">User Name <span v-if="!hasJwt">*</span></label>
         <input
           class="form-input"
-          v-model.trim="form.user_name" :readonly="!!me"
+          v-model.trim="form.user_name"
           type="text"
+          :readonly="hasJwt"
           :disabled="submitting"
           placeholder=""
         />
@@ -14,11 +15,12 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Email *</label>
+        <label class="form-label">Email <span v-if="!hasJwt">*</span></label>
         <input
           class="form-input"
-          v-model.trim="form.email" :readonly="!!me"
+          v-model.trim="form.email"
           type="email"
+          :readonly="hasJwt"
           :disabled="submitting"
           placeholder=""
         />
@@ -142,13 +144,12 @@ export default {
   props: {
     me: { type: Object, default: null },
     parent_id: { type: [Number, String, null], default: null },
-
-    // NEW: App.vue increments this on login/logout to force full reset
     resetKey: { type: Number, default: 0 },
   },
 
   data() {
     return {
+      parentIdInternal: null,
       submitting: false,
       captchaLoading: false,
       hasJwt: false,
@@ -168,31 +169,18 @@ export default {
   },
 
   watch: {
-    me: {
+    parent_id: {
       immediate: true,
-      handler(newMe, oldMe) {
-        const wasAuthed = !!oldMe;
-        const isAuthed = !!newMe;
-
-        // login -> autofill
-        if (!wasAuthed && isAuthed) {
-          const uname = newMe.username || newMe.user_name || "";
-          const email = newMe.email || "";
-          this.form.user_name = uname;
-          this.form.email = email;
-        }
-
-        // logout -> clear
-        if (wasAuthed && !isAuthed) {
-          const uname = this.me?.username || this.me?.user_name || "";
-      const email = this.me?.email || "";
-      this.form.user_name = uname;
-          this.form.email = email;
-        }
+      handler(val) {
+        this.parentIdInternal = (val !== null && val !== undefined && val !== "") ? Number(val) : null;
       },
     },
-
-    // NEW: hard reset when App says "auth changed"
+    me: {
+      immediate: true,
+      handler() {
+        this.prefillFromMe();
+      },
+    },
     resetKey() {
       this.resetAll();
     },
@@ -201,6 +189,8 @@ export default {
   mounted() {
     this._onAuthChangedBound = () => this.onAuthChanged();
     this.syncAuth();
+
+    this.prefillFromMe();
 
     if (!this.hasJwt) this.loadCaptcha();
     window.addEventListener("auth-changed", this._onAuthChangedBound);
@@ -211,38 +201,40 @@ export default {
   },
 
   methods: {
-    // NEW: full reset for logout (and optional for login)
-    async resetAll() {
-      this.errors = {};
-
-      // clear ALL user inputs (fixes "values not reset")
-      const uname = this.me?.username || this.me?.user_name || "";
-      const email = this.me?.email || "";
-      this.form.user_name = uname;
-      this.form.email = email;
-      this.form.homepage = "";
-      this.form.text = "";
-
-      // clear files
-      this.clearFiles();
-
-      // sync auth and reset captcha fields accordingly
-      this.syncAuth();
-
-      if (!this.hasJwt) {
-        await this.loadCaptcha();
-      } else {
+    syncAuth() {
+      this.hasJwt = !!getAccessToken();
+      if (this.hasJwt) {
         this.form.captcha_key = "";
         this.form.captcha_value = "";
         this.captcha = { key: "", image: "" };
       }
     },
 
-    syncAuth() {
-      this.hasJwt = !!getAccessToken();
-      if (this.hasJwt) {
-        this.form.captcha_key = "";
-        this.form.captcha_value = "";
+    prefillFromMe() {
+      this.syncAuth();
+      if (!this.hasJwt) return;
+
+      const uname = this.me?.username || this.me?.user_name || "";
+      const email = this.me?.email || "";
+
+      if (uname) this.form.user_name = uname;
+      if (email) this.form.email = email;
+    },
+
+    async resetAll() {
+      this.errors = {};
+      this.syncAuth();
+
+      this.form.homepage = "";
+      this.form.text = "";
+      this.clearFiles();
+
+      if (!this.hasJwt) {
+        this.form.user_name = "";
+        this.form.email = "";
+        await this.loadCaptcha();
+      } else {
+        this.prefillFromMe();
       }
     },
 
@@ -253,10 +245,13 @@ export default {
       if (!was && this.hasJwt) {
         this.errors = {};
         this.clearFiles();
+        this.prefillFromMe();
       }
 
       if (was && !this.hasJwt) {
         this.clearFiles();
+        this.form.user_name = "";
+        this.form.email = "";
         this.loadCaptcha();
       }
     },
@@ -366,14 +361,19 @@ export default {
     async onSubmit() {
       this.errors = {};
       this.syncAuth();
+      this.prefillFromMe();
 
-      if (!this.form.text) this.errors.text = "Text is required.";
-      if (!this.form.user_name) this.errors.user_name = "User Name is required.";
-      if (!this.form.email) this.errors.email = "Email is required.";
+      if (!this.form.text?.trim()) this.errors.text = "Text is required.";
 
       if (!this.hasJwt) {
+        if (!this.form.user_name?.trim()) this.errors.user_name = "User Name is required.";
+        if (!this.form.email?.trim()) this.errors.email = "Email is required.";
         if (!this.form.captcha_key || !this.form.captcha_value) {
           this.errors.captcha_value = "CAPTCHA is required.";
+        }
+      } else {
+        if (!this.form.user_name?.trim() || !this.form.email?.trim()) {
+          this.errors.non_field = "User info is not loaded yet. Please try again in a moment.";
         }
       }
 
@@ -389,11 +389,15 @@ export default {
           text: this.form.text,
         };
 
-        if (this.parent_id) payload.parent = this.parent_id;
+        const parentId = this.parentIdInternal;
 
         if (!this.hasJwt) {
           payload.captcha_key = this.form.captcha_key;
           payload.captcha_value = this.form.captcha_value;
+        }
+
+        if (parentId !== null && parentId !== undefined) {
+          payload.parent = Number(parentId);
         }
 
         const created = await createComment(payload);
@@ -405,18 +409,14 @@ export default {
           }
         }
 
-        // keep user_name/email as you wish? (if you want always clear -> do it here)
         this.form.text = "";
         this.form.homepage = "";
         this.clearFiles();
 
         if (!this.hasJwt) await this.loadCaptcha();
 
-        this.$emit("created", created);
-
-        setTimeout(() => {
-          this.$emit("created", created);
-        }, 250);
+        // ✅ single event (no duplicate emit)
+        this.$emit("created", { created, parentId });
       } catch (err) {
         this.errors = this.mapApiErrors(err);
         if (!this.hasJwt && (this.errors.captcha_value || this.errors.captcha_key)) {
@@ -431,7 +431,7 @@ export default {
 </script>
 
 <style scoped>
-/* твой CSS без изменений */
+/* твой CSS без изменений (оставляю как был) */
 .comment-form {
   display: flex;
   flex-direction: column;
@@ -456,16 +456,9 @@ export default {
   .grid2 { grid-template-columns: 1fr; }
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+.form-group { display: flex; flex-direction: column; gap: 6px; }
 
-.form-label {
-  font-weight: 900;
-  color: var(--text);
-}
+.form-label { font-weight: 900; color: var(--text); }
 
 .form-input,
 .form-textarea {
@@ -497,23 +490,12 @@ html[data-theme="light"] .form-textarea::placeholder {
 
 .form-textarea { resize: vertical; }
 
-.error-text {
-  color: var(--danger, #ff5a78);
-  font-size: 13px;
-}
+.error-text { color: var(--danger, #ff5a78); font-size: 13px; }
 
 .hint-text,
-.hint-lock {
-  color: var(--muted);
-  font-size: 13px;
-}
+.hint-lock { color: var(--muted); font-size: 13px; }
 
-/* Toolbar */
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .toolbar-btn {
   border: 1px solid rgba(96, 165, 250, 0.35);
@@ -531,17 +513,9 @@ html[data-theme="light"] .toolbar-btn {
   background: rgba(37, 99, 235, 0.08);
   border-color: rgba(37, 99, 235, 0.25);
 }
-html[data-theme="light"] .toolbar-btn:hover {
-  background: rgba(37, 99, 235, 0.12);
-}
+html[data-theme="light"] .toolbar-btn:hover { background: rgba(37, 99, 235, 0.12); }
 
-/* Files */
-.files-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-}
+.files-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 
 .file-item {
   display: flex;
@@ -553,21 +527,9 @@ html[data-theme="light"] .toolbar-btn:hover {
   background: var(--surface);
 }
 
-.file-name {
-  font-weight: 900;
-  color: var(--text);
-}
-
-.file-size {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.file-error {
-  color: var(--danger, #ff5a78);
-  font-size: 13px;
-  margin-left: auto;
-}
+.file-name { font-weight: 900; color: var(--text); }
+.file-size { color: var(--muted); font-size: 13px; }
+.file-error { color: var(--danger, #ff5a78); font-size: 13px; margin-left: auto; }
 
 .file-remove {
   border: none;
@@ -578,13 +540,7 @@ html[data-theme="light"] .toolbar-btn:hover {
 }
 .file-remove:hover { opacity: 1; }
 
-/* Captcha */
-.captcha-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
+.captcha-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 
 .captcha-image {
   height: 48px;
@@ -609,18 +565,11 @@ html[data-theme="light"] .captcha-reload {
   background: rgba(37, 99, 235, 0.08);
   border-color: rgba(37, 99, 235, 0.25);
 }
-html[data-theme="light"] .captcha-reload:hover {
-  background: rgba(37, 99, 235, 0.12);
-}
+html[data-theme="light"] .captcha-reload:hover { background: rgba(37, 99, 235, 0.12); }
 
 .captcha-input { flex: 1; min-width: 220px; }
 
-/* Submit */
-.form-actions {
-  display: flex;
-  justify-content: center;
-  margin-top: 4px;
-}
+.form-actions { display: flex; justify-content: center; margin-top: 4px; }
 
 .btn {
   border: 1px solid rgba(96, 165, 250, 0.35);
@@ -634,14 +583,11 @@ html[data-theme="light"] .captcha-reload:hover {
 }
 
 .btn:hover { background: rgba(96, 165, 250, 0.20); }
-
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 html[data-theme="light"] .btn {
   background: rgba(37, 99, 235, 0.10);
   border-color: rgba(37, 99, 235, 0.28);
 }
-html[data-theme="light"] .btn:hover {
-  background: rgba(37, 99, 235, 0.14);
-}
+html[data-theme="light"] .btn:hover { background: rgba(37, 99, 235, 0.14); }
 </style>

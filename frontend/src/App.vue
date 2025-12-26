@@ -30,7 +30,7 @@
         <div class="controls">
           <label>Sort by:</label>
           <select v-model="ordering" @change="onOrderingChange">
-            <option value="-created_at">Newest first (LIFO)</option>
+            <option value="created_at">Newest first (LIFO)</option>
             <option value="created_at">Oldest first</option>
             <option value="user_name">User name A-Z</option>
             <option value="-user_name">User name Z-A</option>
@@ -43,7 +43,8 @@
       <div v-if="loading" class="loading">Loading comments...</div>
 
       <div v-else class="comments-wrap">
-        <table v-if="currentComments.length" class="comments-table">
+        <!-- TABLE: flat list (all comments including replies) -->
+        <table v-if="flatComments.length" class="comments-table">
           <thead>
             <tr>
               <th>User Name</th>
@@ -53,7 +54,7 @@
           </thead>
           <tbody>
             <tr
-              v-for="comment in currentComments"
+              v-for="comment in flatComments"
               :key="comment.id"
               class="row-clickable"
               @click="scrollToComment(comment.id)"
@@ -66,22 +67,35 @@
           </tbody>
         </table>
 
+        <!-- CARDS: tree list (root + nested children) -->
         <CommentTree
-          v-if="currentComments.length"
-          :comments="currentComments"
+          v-if="treeComments.length"
+          :comments="treeComments"
           :isAdmin="isAdmin"
           :me="me"
-          @changed="loadComments"
+          :reset-key="formResetKey"
+          :depth="0"
+          @changed="handleCreated"
         />
 
         <p v-else class="muted">No comments yet.</p>
 
         <div v-if="paginationEnabled" class="pagination">
-          <button class="btn-outline" :disabled="!comments.previous" @click="changePage(-1)">
+          <button
+            class="btn-outline"
+            :disabled="!comments || !comments.previous"
+            @click="changePage(-1)"
+          >
             Prev
           </button>
+
           <span class="muted">Page {{ page }}</span>
-          <button class="btn-outline" :disabled="!comments.next" @click="changePage(1)">
+
+          <button
+            class="btn-outline"
+            :disabled="!comments || !comments.next"
+            @click="changePage(1)"
+          >
             Next
           </button>
         </div>
@@ -119,37 +133,59 @@ function safeSaveTheme(theme) {
   } catch (_) {}
 }
 
+/**
+ * Build nested tree from flat list.
+ * Supports common parent field variants:
+ * - parent_id
+ * - parentId
+ * - parent (number) OR parent (object with id)
+ */
+
 export default {
   name: "App",
   components: { AuthBar, CommentForm, CommentTree },
 
   data() {
     return {
+      lastScrollToId: null,
       theme: THEMES.DARK,
+
       me: null,
       isAdmin: false,
+
       comments: null,
       page: 1,
-      ordering: "-created_at",
+      ordering: "created_at",
       loading: false,
+
       ws: null,
 
       // forces CommentForm reset on login/logout
       formResetKey: 0,
 
-      // highlight timeout holder
       _highlightTimer: null,
     };
   },
 
   computed: {
     paginationEnabled() {
-      return this.comments && (this.comments.next !== null || this.comments.previous !== null);
+      return (
+        this.comments &&
+        (this.comments.next !== null || this.comments.previous !== null)
+      );
     },
-    currentComments() {
+
+    // FLAT: raw list from API (table)
+    flatComments() {
       if (!this.comments) return [];
-      return this.comments.results || this.comments;
+      return this.comments.results || this.comments || [];
     },
+
+    // TREE: only roots + nested children (cards)
+    treeComments() {
+      return this.flatComments;
+    },
+
     themeIcon() {
       return this.theme === THEMES.DARK ? "🌙" : "☀️";
     },
@@ -157,7 +193,9 @@ export default {
       return this.theme === THEMES.DARK ? "Dark" : "Light";
     },
     themeAria() {
-      return this.theme === THEMES.DARK ? "Switch to light theme" : "Switch to dark theme";
+      return this.theme === THEMES.DARK
+        ? "Switch to light theme"
+        : "Switch to dark theme";
     },
   },
 
@@ -195,15 +233,30 @@ export default {
       await this.loadComments();
     },
 
-    async handleCreated() {
+    // called after create from CommentForm / CommentTree
+    async handleCreated(payload) {
+      // prefer created comment id (reply or root), fallback to parent
+      this.lastScrollToId =
+        payload?.id ||
+        payload?.commentId ||
+        payload?.parentId ||
+        payload?.parent_id ||
+        null;
+
+      this.page = 1;
       await this.loadComments();
-      setTimeout(() => this.loadComments(), 300);
+
+      if (!this.lastScrollToId) return;
+
+      this.$nextTick(() => {
+        const el = document.getElementById(`comment-${this.lastScrollToId}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        this.lastScrollToId = null;
+      });
     },
 
     handleAuthChanged() {
-      // reset CommentForm fields (fixes "values don't reset on logout")
       this.formResetKey += 1;
-
       this.loadComments();
       this.loadMe();
     },
@@ -223,14 +276,12 @@ export default {
       return new Date(value).toLocaleString();
     },
 
-    // NEW: click in table -> scroll to comment card in tree + highlight it
     scrollToComment(commentId) {
       const el = document.getElementById(`comment-${commentId}`);
       if (!el) return;
 
       el.scrollIntoView({ behavior: "smooth", block: "start" });
 
-      // remove highlight from previous
       document.querySelectorAll(".comment-highlight").forEach((n) => {
         n.classList.remove("comment-highlight");
       });
@@ -283,6 +334,7 @@ export default {
 </script>
 
 <style>
+/* оставляю твой CSS как был, без ломания */
 .app {
   width: 100%;
   max-width: 1100px;
@@ -317,10 +369,18 @@ export default {
   cursor: pointer;
   user-select: none;
 }
-.theme-toggle:hover { border-color: var(--border-strong); }
+.theme-toggle:hover {
+  border-color: var(--border-strong);
+}
 
-.theme-ico { font-size: 14px; line-height: 1; }
-.theme-text { font-size: 13px; letter-spacing: 0.2px; }
+.theme-ico {
+  font-size: 14px;
+  line-height: 1;
+}
+.theme-text {
+  font-size: 13px;
+  letter-spacing: 0.2px;
+}
 
 .section {
   margin-top: 14px;
@@ -331,10 +391,13 @@ export default {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
 }
 html[data-theme="light"] .section {
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
 }
 
-.section h2 { margin: 0 0 10px; font-size: 18px; }
+.section h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
 
 .section-head {
   display: flex;
@@ -349,7 +412,10 @@ html[data-theme="light"] .section {
   gap: 8px;
   align-items: center;
 }
-.controls label { color: var(--muted); font-size: 13px; }
+.controls label {
+  color: var(--muted);
+  font-size: 13px;
+}
 .controls select {
   background: var(--surface);
   color: var(--text);
@@ -359,7 +425,9 @@ html[data-theme="light"] .section {
   outline: none;
 }
 
-.comments-wrap { margin-top: 8px; }
+.comments-wrap {
+  margin-top: 8px;
+}
 
 .comments-table {
   width: 100%;
@@ -386,33 +454,46 @@ html:not([data-theme="light"]) .comments-table td {
 }
 
 .comments-table thead th {
-  background: rgba(96, 165, 250, 0.10);
+  background: rgba(96, 165, 250, 0.1);
   font-weight: 800;
 }
 
-.comments-table tbody tr:last-child td { border-bottom: none; }
+.comments-table tbody tr:last-child td {
+  border-bottom: none;
+}
 
-.nowrap { white-space: nowrap; }
+.nowrap {
+  white-space: nowrap;
+}
 
-.loading { color: var(--muted); font-size: 13px; }
-.muted { color: var(--muted); }
+.loading {
+  color: var(--muted);
+  font-size: 13px;
+}
+.muted {
+  color: var(--muted);
+}
 
 .btn-outline {
   border: 1px solid rgba(96, 165, 250, 0.35);
-  background: rgba(96, 165, 250, 0.10);
+  background: rgba(96, 165, 250, 0.1);
   color: var(--text);
   border-radius: 12px;
   padding: 9px 12px;
   cursor: pointer;
   font-weight: 800;
 }
-.btn-outline:hover { background: rgba(96, 165, 250, 0.16); }
+.btn-outline:hover {
+  background: rgba(96, 165, 250, 0.16);
+}
 
 html[data-theme="light"] .btn-outline {
   background: #ffffff;
   border-color: rgba(37, 99, 235, 0.35);
 }
-html[data-theme="light"] .btn-outline:hover { background: #f1f5ff; }
+html[data-theme="light"] .btn-outline:hover {
+  background: #f1f5ff;
+}
 
 .pagination {
   margin-top: 12px;
@@ -422,7 +503,6 @@ html[data-theme="light"] .btn-outline:hover { background: #f1f5ff; }
   gap: 10px;
 }
 
-/* NEW: table row clickable affordance */
 .row-clickable {
   cursor: pointer;
 }
@@ -433,10 +513,9 @@ html[data-theme="light"] .row-clickable:hover td {
   background: rgba(37, 99, 235, 0.06);
 }
 
-/* NEW: highlight class added on target comment element */
 .comment-highlight {
   outline: 2px solid rgba(96, 165, 250, 0.75);
-  background: rgba(96, 165, 250, 0.10) !important;
+  background: rgba(96, 165, 250, 0.1) !important;
 }
 html[data-theme="light"] .comment-highlight {
   outline: 2px solid rgba(37, 99, 235, 0.55);

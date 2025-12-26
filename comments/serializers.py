@@ -17,9 +17,7 @@ class AttachmentSerializer(serializers.ModelSerializer):
     def get_file(self, obj) -> str | None:
         """
         Return RELATIVE URL like "/media/attachments/...".
-        This works:
-        - locally with Vite proxy (/media -> backend)
-        - in production behind nginx (/media served by nginx)
+        Works locally (Vite proxy) and in production (nginx serves /media).
         """
         if not obj.file:
             return None
@@ -36,8 +34,34 @@ class AttachmentCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
 
+# --- Recursive serializer for children (replies) ---
+class CommentChildSerializer(serializers.ModelSerializer):
+    attachments = AttachmentSerializer(many=True, read_only=True)
+    children = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = (
+            "id",
+            "user_name",
+            "email",
+            "homepage",
+            "text",
+            "parent",
+            "created_at",
+            "attachments",
+            "children",
+        )
+
+    def get_children(self, obj):
+        # Replies should be shown UNDER parent (old -> new)
+        qs = obj.children.all().order_by("created_at")
+        return CommentChildSerializer(qs, many=True, context=self.context).data
+
+
 class CommentSerializer(serializers.ModelSerializer):
     attachments = AttachmentSerializer(many=True, read_only=True)
+    children = serializers.SerializerMethodField()
 
     # CAPTCHA required ONLY for anonymous users
     captcha_key = serializers.CharField(write_only=True, required=False, allow_blank=True)
@@ -54,10 +78,16 @@ class CommentSerializer(serializers.ModelSerializer):
             "parent",
             "created_at",
             "attachments",
+            "children",
             "captcha_key",
             "captcha_value",
         )
-        read_only_fields = ("id", "created_at", "attachments")
+        read_only_fields = ("id", "created_at", "attachments", "children")
+
+    def get_children(self, obj):
+        # Replies should be shown UNDER parent (old -> new)
+        qs = obj.children.all().order_by("created_at")
+        return CommentChildSerializer(qs, many=True, context=self.context).data
 
     def validate_text(self, value: str) -> str:
         if value is None:
