@@ -1,13 +1,13 @@
 <template>
   <form class="comment-form" @submit.prevent="onSubmit">
-    <div class="grid2">
+    <div class="grid2" v-if="!hasJwt">
       <div class="form-group">
-        <label class="form-label">User Name <span v-if="!hasJwt">*</span></label>
+        <label class="form-label">User Name *</label>
         <input
           class="form-input"
           v-model.trim="form.user_name"
           type="text"
-          :readonly="hasJwt"
+
           :disabled="submitting"
           placeholder=""
         />
@@ -15,12 +15,12 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Email <span v-if="!hasJwt">*</span></label>
+        <label class="form-label">Email *</label>
         <input
           class="form-input"
           v-model.trim="form.email"
           type="email"
-          :readonly="hasJwt"
+
           :disabled="submitting"
           placeholder=""
         />
@@ -211,7 +211,6 @@ export default {
     },
 
     prefillFromMe() {
-      this.syncAuth();
       if (!this.hasJwt) return;
 
       const uname = this.me?.username || this.me?.user_name || "";
