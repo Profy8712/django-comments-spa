@@ -28,10 +28,10 @@
           <button type="button" class="btn-link" @click="toggleReply(c.id)">Reply</button>
 
           <button
-            
-            class="btn-link btn-link-danger"
+              v-if="isAdmin"
+              class="btn-link btn-link-danger"
             type="button"
-            @click="onDelete(c.id)"
+            @click.stop.prevent="onDelete(c.id)"
             title="Delete comment"
           >
             Delete

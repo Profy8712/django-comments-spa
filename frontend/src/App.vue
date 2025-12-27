@@ -275,14 +275,21 @@ export default {
     },
 
     async loadMe() {
-      try {
-        this.me = await fetchMe();
-        this.isAdmin = !!(this.me && (this.me.is_staff || this.me.is_superuser));
-      } catch (_) {
-        this.me = null;
-        this.isAdmin = false;
-      }
-    },
+        try {
+          const token = localStorage.getItem("access");
+          if (!token || !token.trim()) {
+            this.me = null;
+            this.isAdmin = false;
+            return;
+          }
+
+          this.me = await fetchMe();
+          this.isAdmin = !!(this.me && (this.me.is_staff || this.me.is_superuser));
+        } catch (_) {
+          this.me = null;
+          this.isAdmin = false;
+        }
+      },
 
     formatDate(value) {
       if (!value) return "";
