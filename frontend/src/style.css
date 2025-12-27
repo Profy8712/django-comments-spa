@@ -192,9 +192,20 @@ html, body { height: auto; }
 body { overflow-y: auto; }
 
 /* flash highlight (used by App.vue scrollToComment) */
+.comment-item { transition: box-shadow 220ms ease, transform 220ms ease, border-color 220ms ease; }
+
 .comment-item.flash-highlight {
-  border-color: var(--border-strong) !important;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16) !important;
-  background-color: rgba(148, 163, 184, 0.10) !important;
+  border-color: rgba(59, 130, 246, 0.55) !important;
+  box-shadow:
+    0 0 0 3px rgba(59, 130, 246, 0.22),
+    0 12px 28px rgba(15, 23, 42, 0.16) !important;
+  transform: translateY(-1px);
+}
+
+html:not([data-theme="light"]) .comment-item.flash-highlight {
+  border-color: rgba(96, 165, 250, 0.55) !important;
+  box-shadow:
+    0 0 0 3px rgba(96, 165, 250, 0.22),
+    0 12px 28px rgba(0, 0, 0, 0.45) !important;
 }
 

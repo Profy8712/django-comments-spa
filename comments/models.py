@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator
@@ -34,10 +35,14 @@ def attachment_upload_to(instance: "Attachment", filename: str) -> str:
     Files will be stored under:
     media/attachments/<comment_id>/<filename>
     """
+    if not instance.comment_id:
+        return f"attachments/tmp/{instance.upload_key}/{filename}"
     return f"attachments/{instance.comment_id}/{filename}"
 
 
 class Attachment(models.Model):
+
+    upload_key = models.UUIDField(default=uuid.uuid4, db_index=True)
     """
     Attachment model for images and text files.
 
@@ -51,6 +56,8 @@ class Attachment(models.Model):
         Comment,
         on_delete=models.CASCADE,
         related_name="attachments",
+        null=True,
+        blank=True,
     )
     file = models.FileField(
         upload_to=attachment_upload_to,

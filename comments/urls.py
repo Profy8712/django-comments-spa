@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    AttachmentTempUploadView,
     AdminCommentDeleteView,
     AttachmentUploadView,
     CaptchaAPIView,
@@ -20,6 +21,8 @@ urlpatterns = [
     path("admin/comments/<int:pk>/", AdminCommentDeleteView.as_view(), name="admin-comment-delete"),
 
     # comment detail endpoints
+    path("upload/", AttachmentTempUploadView.as_view(), name="attachment-temp-upload"),
+
     path("<int:pk>/", CommentDetailView.as_view(), name="comment-detail"),
     path("<int:pk>/upload/", AttachmentUploadView.as_view(), name="comment-upload"),
 ]

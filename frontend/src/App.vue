@@ -76,7 +76,7 @@
           :reset-key="formResetKey"
           :depth="0"
           @changed="handleCreated"
-            @delete="handleDelete"
+          @delete="handleDelete"
         />
 
         <p v-else class="muted">No comments yet.</p>
@@ -109,6 +109,7 @@
 import AuthBar from "./components/AuthBar.vue";
 import CommentForm from "./components/CommentForm.vue";
 import CommentTree from "./components/CommentTree.vue";
+
 import { fetchComments, deleteComment, adminDeleteComment } from "./api/comments";
 import { fetchMe } from "./api/accounts";
 
@@ -164,7 +165,7 @@ export default {
       // forces CommentForm reset on login/logout
       formResetKey: 0,
 
-      _highlightTimer: null,
+      _highlightTimer: null
     };
   },
 
@@ -190,26 +191,35 @@ export default {
     themeIcon() {
       return this.theme === THEMES.DARK ? "🌙" : "☀️";
     },
+
     themeLabel() {
       return this.theme === THEMES.DARK ? "Dark" : "Light";
     },
+
     themeAria() {
       return this.theme === THEMES.DARK
         ? "Switch to light theme"
         : "Switch to dark theme";
-    },
+    }
   },
-
 
   methods: {
     scrollToComment(id) {
       if (!id) return;
+
       requestAnimationFrame(() => {
-        const el = document.getElementById(`c-${id}`) || document.querySelector(`[data-comment-id="${id}"]`);
+        const el =
+          document.getElementById(`c-${id}`) ||
+          document.querySelector(`[data-comment-id="${id}"]`);
+
         if (!el) return;
+
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         window.location.hash = `c-${id}`;
-        const card = el.closest(".comment-item") || el; card.classList.add("flash-highlight");
+
+        const card = el.closest(".comment-item") || el;
+        card.classList.add("flash-highlight");
+
         setTimeout(() => card.classList.remove("flash-highlight"), 1600);
       });
     },
@@ -219,9 +229,11 @@ export default {
       applyThemeToDom(this.theme);
       safeSaveTheme(this.theme);
     },
+
     toggleTheme() {
       this.setTheme(this.theme === THEMES.DARK ? THEMES.LIGHT : THEMES.DARK);
     },
+
     initTheme() {
       this.setTheme(safeGetTheme());
     },
@@ -249,41 +261,39 @@ export default {
 
     // called after create from CommentForm / CommentTree
     async handleCreated(payload) {
-      // prefer created comment id (reply or root), fallback to parent
-      this.lastScrollToId =
+      // Variant C: attachments are already linked before comment is created
+      const id =
+        payload?.created?.id ||
         payload?.id ||
         payload?.commentId ||
         payload?.parentId ||
         payload?.parent_id ||
         null;
 
+      this.lastScrollToId = id;
+
       this.page = 1;
       await this.loadComments();
 
-      if (!this.lastScrollToId) return;
-
-      this.$nextTick(() => {
-        const el = document.getElementById(`comment-${this.lastScrollToId}`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-        this.lastScrollToId = null;
-      });
+      if (id) this.scrollToComment(id);
+      this.lastScrollToId = null;
     },
 
-      async handleDelete(id) {
-        try {
-          if (!id) return;
-          if (!confirm("Delete this comment?")) return;
+    async handleDelete(id) {
+      try {
+        if (!id) return;
+        if (!confirm("Delete this comment?")) return;
 
-          await adminDeleteComment(id);
+        await adminDeleteComment(id);
 
-          // reload list to reflect deletion
-          this.page = 1;
-          await this.loadComments();
-        } catch (e) {
-          console.error("[handleDelete] failed:", e);
-          alert("Failed to delete comment");
-        }
-      },
+        // reload list to reflect deletion
+        this.page = 1;
+        await this.loadComments();
+      } catch (e) {
+        console.error("[handleDelete] failed:", e);
+        alert("Failed to delete comment");
+      }
+    },
 
     handleAuthChanged() {
       this.formResetKey += 1;
@@ -292,27 +302,29 @@ export default {
     },
 
     async loadMe() {
-        try {
-          const token = localStorage.getItem("access");
-          if (!token || !token.trim()) {
-            this.me = null;
-            this.isAdmin = false;
-            return;
-          }
-
-          this.me = await fetchMe();
-          this.isAdmin = !!(this.me && (this.me.is_staff || this.me.is_superuser));
-        } catch (_) {
+      try {
+        const token = localStorage.getItem("access");
+        if (!token || !token.trim()) {
           this.me = null;
           this.isAdmin = false;
+          return;
         }
-      },
+
+        this.me = await fetchMe();
+        this.isAdmin = !!(
+          this.me &&
+          (this.me.is_staff || this.me.is_superuser)
+        );
+      } catch (_) {
+        this.me = null;
+        this.isAdmin = false;
+      }
+    },
 
     formatDate(value) {
       if (!value) return "";
       return new Date(value).toLocaleString();
     },
-
 
     setupWebSocket() {
       const protocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -336,12 +348,13 @@ export default {
       };
 
       this.ws.onerror = (error) => console.error("WebSocket error:", error);
-    },
+    }
   },
 
   async mounted() {
     const hash = String(window.location.hash || "");
     const m = hash.match(/^#c-(\d+)$/);
+
     if (m) {
       const id = Number(m[1]);
       if (Number.isFinite(id)) {
@@ -358,7 +371,7 @@ export default {
   beforeUnmount() {
     if (this.ws) this.ws.close();
     if (this._highlightTimer) clearTimeout(this._highlightTimer);
-  },
+  }
 };
 </script>
 

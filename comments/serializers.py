@@ -1,6 +1,7 @@
 import re
 
 from captcha.models import CaptchaStore
+from django.db import transaction
 from rest_framework import serializers
 
 from .models import Attachment, Comment
@@ -19,6 +20,24 @@ class AttachmentSerializer(serializers.ModelSerializer):
         Return RELATIVE URL like "/media/attachments/...".
         Works locally (Vite proxy) and in production (nginx serves /media).
         """
+        if not obj.file:
+            return None
+        try:
+            return obj.file.url
+        except Exception:
+            return None
+
+
+
+
+class AttachmentUploadSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Attachment
+        fields = ("id", "file", "upload_key", "uploaded_at")
+
+    def get_file(self, obj) -> str | None:
         if not obj.file:
             return None
         try:
@@ -168,6 +187,49 @@ class CommentSerializer(serializers.ModelSerializer):
         validated_data.pop("captcha_key", None)
         validated_data.pop("captcha_value", None)
         return super().create(validated_data)
+
+
+class CommentCreateSerializer(CommentSerializer):
+    attachment_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True,
+        write_only=True,
+    )
+    upload_key = serializers.UUIDField(required=False, write_only=True)
+
+    class Meta(CommentSerializer.Meta):
+        fields = CommentSerializer.Meta.fields + ("attachment_ids", "upload_key")
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        ids = attrs.get("attachment_ids") or []
+        key = attrs.get("upload_key")
+
+        if ids and not key:
+            raise serializers.ValidationError({"upload_key": ["upload_key is required when attachment_ids provided"]})
+
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        ids = validated_data.pop("attachment_ids", [])
+        key = validated_data.pop("upload_key", None)
+
+        comment = super().create(validated_data)
+
+        if ids:
+            qs = Attachment.objects.select_for_update().filter(
+                id__in=ids,
+                upload_key=key,
+                comment__isnull=True,
+            )
+            if qs.count() != len(ids):
+                raise serializers.ValidationError({"attachment_ids": ["Some attachments are invalid or already used"]})
+            qs.update(comment=comment)
+
+        return comment
 
 
 class CommentSearchResultSerializer(serializers.Serializer):

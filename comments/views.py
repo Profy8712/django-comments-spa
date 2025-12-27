@@ -10,11 +10,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .documents import CommentDocument
-from .models import Comment
+from .models import Attachment, Comment
 from .permissions import IsStaffOrSuperuser
 from .serializers import (
     AttachmentCreateSerializer,
     AttachmentSerializer,
+    AttachmentUploadSerializer,
+    CommentCreateSerializer,
     CommentSearchResultSerializer,
     CommentSerializer,
 )
@@ -28,6 +30,11 @@ class CommentListCreateView(generics.ListCreateAPIView):
       - JWT user  -> allowed, CAPTCHA not required
     """
     serializer_class = CommentSerializer
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return CommentCreateSerializer
+        return CommentSerializer
     permission_classes = [AllowAny]
 
     filter_backends = [filters.OrderingFilter]
@@ -95,6 +102,25 @@ class CaptchaAPIView(APIView):
         url = captcha_image_url(key)
         return Response({"key": key, "image": url}, status=status.HTTP_200_OK)
 
+
+
+class AttachmentTempUploadView(generics.CreateAPIView):
+    """
+    Upload attachments WITHOUT comment id (JWT only).
+    POST /api/comments/upload/
+    Response: { id, file, upload_key, uploaded_at }
+    """
+    serializer_class = AttachmentUploadSerializer
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        f = request.FILES.get("file")
+        if not f:
+            return Response({"file": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        instance = Attachment.objects.create(file=f)
+        return Response(AttachmentUploadSerializer(instance).data, status=status.HTTP_201_CREATED)
 
 class AttachmentUploadView(generics.CreateAPIView):
     """

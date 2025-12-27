@@ -58,6 +58,22 @@ export function createCommentWithFiles(formData) {
   return apiPostForm("/api/comments/", formData);
 }
 
+// NEW (Variant C): upload files first, then create comment with attachment_ids + upload_key
+export async function uploadFiles(files) {
+  const uploaded = [];
+  for (const file of files || []) {
+    const fd = new FormData();
+    fd.append("file", file);
+    // backend: POST /api/comments/upload/
+    const one = await apiPostForm("/api/comments/upload/", fd);
+    uploaded.push(one);
+  }
+
+  const attachment_ids = uploaded.map((x) => x.id);
+  const upload_key = uploaded[0]?.upload_key || null;
+  return { attachment_ids, upload_key, uploaded };
+}
+
 /** ✅ NEW: delete comment */
 export function deleteComment(id) {
   if (!id) throw new Error("deleteComment: id is required");

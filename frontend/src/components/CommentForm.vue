@@ -137,8 +137,7 @@
 
 <script>
 import { apiGet, getAccessToken, buildUrl } from "../api/index";
-import { createComment } from "../api/comments";
-import { uploadAttachment } from "../api/attachments";
+import { createComment, uploadFiles } from "../api/comments";
 
 export default {
   name: "CommentForm",
@@ -401,14 +400,22 @@ export default {
           payload.parent = Number(parentId);
         }
 
-        const created = await createComment(payload);
+        let attachment_ids = [];
+        let upload_key = null;
 
         if (this.hasJwt && this.selectedFiles.length) {
           const okFiles = this.selectedFiles.filter((f) => !f.error).map((f) => f.file);
-          for (const file of okFiles) {
-            await uploadAttachment(created.id, file);
+          const up = await uploadFiles(okFiles);
+          attachment_ids = up.attachment_ids || [];
+          upload_key = up.upload_key || null;
+
+          if (attachment_ids.length && upload_key) {
+            payload.attachment_ids = attachment_ids;
+            payload.upload_key = upload_key;
           }
         }
+
+        const created = await createComment(payload);
 
         this.form.text = "";
         this.form.homepage = "";
