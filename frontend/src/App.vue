@@ -44,28 +44,32 @@
 
       <div v-else class="comments-wrap">
         <!-- TABLE: flat list (all comments including replies) -->
-        <table v-if="flatComments.length" class="comments-table">
-          <thead>
-            <tr>
-              <th>User Name</th>
-              <th>Email</th>
-              <th>Created at</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="comment in flatComments"
-              :key="comment.id"
-              class="row-clickable"
-              @click="scrollToComment(comment.id)"
-              title="Scroll to comment"
-            >
-              <td>{{ comment.user_name }}</td>
-              <td>{{ comment.email }}</td>
-              <td class="nowrap">{{ formatDate(comment.created_at) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <details v-if="flatComments.length" class="comments-table-wrap">
+          <summary class="muted">Show comments table</summary>
+
+          <table class="comments-table">
+            <thead>
+              <tr>
+                <th>User Name</th>
+                <th>Email</th>
+                <th>Created at</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="comment in flatComments"
+                :key="comment.id"
+                class="row-clickable"
+                @click="scrollToComment(comment.id)"
+                title="Scroll to comment"
+              >
+                <td>{{ comment.user_name }}</td>
+                <td>{{ comment.email }}</td>
+                <td class="nowrap">{{ formatDate(comment.created_at) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </details>
 
         <!-- CARDS: tree list (root + nested children) -->
         <CommentTree
@@ -110,7 +114,7 @@ import AuthBar from "./components/AuthBar.vue";
 import CommentForm from "./components/CommentForm.vue";
 import CommentTree from "./components/CommentTree.vue";
 
-import { fetchComments, deleteComment, adminDeleteComment } from "./api/comments";
+import { fetchComments, adminDeleteComment } from "./api/comments";
 import { fetchMe } from "./api/accounts";
 
 const THEME_KEY = "theme";
@@ -134,14 +138,6 @@ function safeSaveTheme(theme) {
     localStorage.setItem(THEME_KEY, theme);
   } catch (_) {}
 }
-
-/**
- * Build nested tree from flat list.
- * Supports common parent field variants:
- * - parent_id
- * - parentId
- * - parent (number) OR parent (object with id)
- */
 
 export default {
   name: "App",
@@ -183,7 +179,7 @@ export default {
       return this.comments.results || this.comments || [];
     },
 
-    // TREE: only roots + nested children (cards)
+    // TREE: roots + nested children (backend already returns children)
     treeComments() {
       return this.flatComments;
     },
@@ -261,7 +257,6 @@ export default {
 
     // called after create from CommentForm / CommentTree
     async handleCreated(payload) {
-      // Variant C: attachments are already linked before comment is created
       const id =
         payload?.created?.id ||
         payload?.id ||
@@ -286,7 +281,6 @@ export default {
 
         await adminDeleteComment(id);
 
-        // reload list to reflect deletion
         this.page = 1;
         await this.loadComments();
       } catch (e) {
@@ -376,7 +370,6 @@ export default {
 </script>
 
 <style>
-/* оставляю твой CSS как был, без ломания */
 .app {
   width: 100%;
   max-width: 1100px;
@@ -469,6 +462,16 @@ html[data-theme="light"] .section {
 
 .comments-wrap {
   margin-top: 8px;
+}
+
+.comments-table-wrap {
+  margin-bottom: 12px;
+}
+.comments-table-wrap summary {
+  cursor: pointer;
+  user-select: none;
+  font-weight: 800;
+  padding: 6px 0 10px;
 }
 
 .comments-table {

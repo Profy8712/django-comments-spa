@@ -13,9 +13,9 @@
       <div class="comment-head">
         <div class="avatar">{{ avatarLetter(c) }}</div>
 
-        <div class="meta">
+        <div class="meta comment-meta">
           <div class="line1">
-            <span class="author">{{ c.user_name || c.username || "Anonymous" }}</span>
+            <span class="author comment-author">{{ c.user_name || c.username || "Anonymous" }}</span>
             <span class="muted dot">•</span>
             <span class="time muted">{{ formatDate(c.created_at || c.created || c.createdAt) }}</span>
           </div>
@@ -24,7 +24,7 @@
           </div>
         </div>
 
-        <div class="actions">
+        <div class="actions comment-actions">
           <button type="button" class="btn-link" @click="toggleReply(c.id)">Reply</button>
 
           <button
@@ -84,7 +84,7 @@
       </div>
 
       <!-- Children -->
-      <div  class="children">
+      <div  class="children comment-children">
         <CommentTree
           :comments="c.children"
           :isAdmin="isAdmin"
