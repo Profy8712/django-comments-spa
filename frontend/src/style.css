@@ -437,3 +437,41 @@ html:not([data-theme="light"]) .btn-link-danger:hover {
 html:not([data-theme="light"]) textarea::placeholder {
   color: rgba(245, 248, 255, 0.68);
 }
+
+/* =========================================================
+   Thread readability polish (forum-like nesting)
+   ========================================================= */
+
+/* Lighter nested comment cards */
+.children .comment-item {
+  background: rgba(15, 23, 42, 0.015);
+  border-color: rgba(15, 23, 42, 0.10);
+}
+
+html:not([data-theme="light"]) .children .comment-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Clean indentation line */
+.children {
+  margin-top: 12px;
+  padding-left: 18px;
+  border-left: 2px solid rgba(148, 163, 184, 0.35);
+}
+
+html:not([data-theme="light"]) .children {
+  border-left-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Compact header for nested comments */
+.children .comment-head {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.children .avatar {
+  width: 30px;
+  height: 30px;
+}
+
