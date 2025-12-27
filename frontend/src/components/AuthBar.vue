@@ -5,8 +5,8 @@
         <div class="auth-title">Auth</div>
 
         <div class="auth-status" :class="{ on: authed }">
-          <span class="dot" />
-          <span>{{ authed ? "Authorized" : "Anonymous" }}</span>
+          <span class="dot" :class="{ on: authed }" />
+          <span class="status-text" :class="{ on: authed }">{{ authed ? "Authorized" : "Anonymous" }}</span>
           <span v-if="me && (me.is_staff || me.is_superuser)" class="admin-badge">ADMIN</span>
         </div>
       </div>
@@ -66,6 +66,12 @@
 import { isAuthed, login, logout, getAccessToken } from "../api/auth";
 
 export default {
+  computed: {
+    hasJwt() {
+      return !!localStorage.getItem("access");
+    }
+  },
+
   name: "AuthBar",
   props: { me: { type: Object, default: null } },
   emits: ["auth-changed"],
@@ -309,4 +315,27 @@ html[data-theme="light"] .btn.danger {
   border: 1px solid rgba(239, 68, 68, 0.45);
   color: #ef4444;
 }
+.dot.on {
+  background: rgba(34, 197, 94, 0.9);
+}
+
+.status-text {
+  color: rgba(148, 163, 184, 0.85);
+  font-weight: 700;
+}
+.status-text.on {
+  color: rgba(34, 197, 94, 0.95);
+}
+
+html[data-theme="light"] .auth-status.on .dot { background: #22c55e !important; }
 </style>
+
+/* Auth status dot: green when authorized */
+.auth-status.on .dot { background: #22c55e; }
+
+
+/* Fix: auth dot green in light theme when authorized */
+html[data-theme="light"] .auth-status.on .dot {
+    background: #22c55e !important;
+}
+
