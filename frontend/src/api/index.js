@@ -101,11 +101,12 @@ function makeError(res, payload) {
   return err;
 }
 
-export async function apiGet(path, opts = {}) {
+export async function apiGet(path, opts = {}, cfg = {}) {
+  const { withAuth = true, retryOn401 = true } = cfg;
   const res = await request(
     path,
     { method: "GET", ...opts },
-    { withAuth: true, retryOn401: true }
+    { withAuth, retryOn401 }
   );
 
   const payload = await readPayload(res);
@@ -145,6 +146,23 @@ export async function apiPostForm(path, formData, opts = {}) {
     },
     { withAuth: true, retryOn401: false } // <<< CRITICAL FIX
   );
+
+  const payload = await readPayload(res);
+  if (!res.ok) throw makeError(res, payload.data ?? payload.text);
+  return payload.data ?? payload.text;
+}
+export async function apiDelete(path, opts = {}) {
+  const res = await request(
+    path,
+    {
+      method: "DELETE",
+      ...(opts || {}),
+    },
+    { withAuth: true, retryOn401: false }
+  );
+
+  // DELETE может вернуть пустое тело
+  if (res.status === 204) return null;
 
   const payload = await readPayload(res);
   if (!res.ok) throw makeError(res, payload.data ?? payload.text);

@@ -76,6 +76,7 @@
           :reset-key="formResetKey"
           :depth="0"
           @changed="handleCreated"
+            @delete="handleDelete"
         />
 
         <p v-else class="muted">No comments yet.</p>
@@ -108,7 +109,7 @@
 import AuthBar from "./components/AuthBar.vue";
 import CommentForm from "./components/CommentForm.vue";
 import CommentTree from "./components/CommentTree.vue";
-import { fetchComments } from "./api/comments";
+import { fetchComments, deleteComment, adminDeleteComment } from "./api/comments";
 import { fetchMe } from "./api/accounts";
 
 const THEME_KEY = "theme";
@@ -267,6 +268,22 @@ export default {
         this.lastScrollToId = null;
       });
     },
+
+      async handleDelete(id) {
+        try {
+          if (!id) return;
+          if (!confirm("Delete this comment?")) return;
+
+          await adminDeleteComment(id);
+
+          // reload list to reflect deletion
+          this.page = 1;
+          await this.loadComments();
+        } catch (e) {
+          console.error("[handleDelete] failed:", e);
+          alert("Failed to delete comment");
+        }
+      },
 
     handleAuthChanged() {
       this.formResetKey += 1;

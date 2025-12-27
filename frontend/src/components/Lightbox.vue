@@ -1,16 +1,16 @@
 <template>
-  <transition name="lightbox-fade">
+  <transition name="lightbox-fade" appear>
     <div
       v-if="modelValue"
       class="lightbox-backdrop"
       @click.self="close"
     >
       <div class="lightbox-content">
-        <button class="lightbox-close" type="button" @click="close">
+        <button class="lightbox-close" type="button" @click="close" aria-label="Close">
           ✕
         </button>
 
-        <!-- картинка -->
+        <!-- image -->
         <img
           v-if="type === 'image'"
           :src="src"
@@ -18,23 +18,20 @@
           class="lightbox-image"
         />
 
-        <!-- текстовый файл -->
-        <pre
-          v-else-if="type === 'text'"
-          class="lightbox-text"
-        >{{ textContent }}</pre>
+        <!-- text -->
+        <pre v-else-if="type === 'text'" class="lightbox-text">{{ textContent }}</pre>
       </div>
     </div>
   </transition>
 </template>
 
 <script setup>
-const props = defineProps({
+defineProps({
   modelValue: { type: Boolean, required: true },
-  src: { type: String, default: "" },      // для картинок
+  src: { type: String, default: "" },
   alt: { type: String, default: "" },
-  type: { type: String, default: "image" }, // "image" или "text"
-  textContent: { type: String, default: "" } // для txt (если решишь грузить)
+  type: { type: String, default: "image" }, // "image" | "text"
+  textContent: { type: String, default: "" }
 });
 
 const emit = defineEmits(["update:modelValue"]);
@@ -53,28 +50,33 @@ function close() {
   align-items: center;
   justify-content: center;
   z-index: 50;
+  padding: 16px;
 }
 
 .lightbox-content {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
+  width: min(92vw, 980px);
+  max-height: 92vh;
   background: #0b1120;
   border-radius: 12px;
   padding: 0.75rem;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.65);
+  transform-origin: center;
+  transform: scale(1);
 }
 
 .lightbox-image {
   display: block;
-  max-width: 80vw;
-  max-height: 80vh;
+  width: 100%;
+  height: auto;
+  max-height: 86vh;
+  object-fit: contain;
   border-radius: 8px;
 }
 
 .lightbox-text {
-  max-width: 80vw;
-  max-height: 80vh;
+  width: 100%;
+  max-height: 86vh;
   overflow: auto;
   color: #e5e7eb;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
@@ -84,23 +86,33 @@ function close() {
 
 .lightbox-close {
   position: absolute;
-  top: 0.25rem;
-  right: 0.35rem;
+  top: 8px;
+  right: 10px;
   border: none;
   background: transparent;
   color: #e5e7eb;
-  font-size: 1.3rem;
+  font-size: 1.4rem;
   cursor: pointer;
 }
 
-/* анимация появления/исчезновения */
+/* animation */
 .lightbox-fade-enter-active,
 .lightbox-fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.25s ease;
+}
+
+.lightbox-fade-enter-active .lightbox-content,
+.lightbox-fade-leave-active .lightbox-content {
+  transition: transform 0.25s ease;
 }
 
 .lightbox-fade-enter-from,
 .lightbox-fade-leave-to {
   opacity: 0;
+}
+
+.lightbox-fade-enter-from .lightbox-content,
+.lightbox-fade-leave-to .lightbox-content {
+  transform: scale(0.88);
 }
 </style>

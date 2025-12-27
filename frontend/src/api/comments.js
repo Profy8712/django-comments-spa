@@ -1,5 +1,5 @@
 // frontend/src/api/comments.js
-import { apiGet, apiPostJson } from "./index";
+import { apiGet, apiPostJson, apiPostForm, apiDelete } from "./index";
 
 function getAccessToken() {
   const t = localStorage.getItem("access");
@@ -17,7 +17,6 @@ function normalizeParentId(parentId) {
 }
 
 export function fetchComments(page = 1, ordering = "-created_at") {
-  // ✅ guard: avoid ?page=[object Object] -> "Invalid page."
   const p = Number(page);
   const safePage = Number.isFinite(p) && p > 0 ? p : 1;
 
@@ -50,4 +49,25 @@ export function createComment(data, parentId = null) {
   }
 
   return apiPostJson("/api/comments/", payload);
+}
+
+/** ✅ If you have upload endpoint */
+export function createCommentWithFiles(formData) {
+  // In your project you likely post to /api/comments/ as multipart
+  // This should exist only if your backend supports it.
+  return apiPostForm("/api/comments/", formData);
+}
+
+/** ✅ NEW: delete comment */
+export function deleteComment(id) {
+  if (!id) throw new Error("deleteComment: id is required");
+  return apiDelete(`/api/comments/${id}/`);
+}
+
+
+// Admin-only delete endpoint:
+// DELETE /api/comments/admin/comments/<id>/
+export function adminDeleteComment(commentId) {
+  if (!commentId) throw new Error("commentId is required");
+  return apiDelete(`/api/comments/admin/comments/${commentId}/`);
 }
