@@ -70,6 +70,18 @@ services:
       python manage.py collectstatic --noinput &&
       daphne -b 0.0.0.0 -p 8000 core.asgi:application
       "
+    healthcheck:
+      # Use API endpoint instead of "/" to avoid 400 due to host/root routing.
+      # Use wget to avoid curl dependency in slim/alpine images.
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- --header='Host: localhost' http://127.0.0.1:8000/api/comments/ >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 60s
 
   celery:
     build:
@@ -81,7 +93,7 @@ services:
       - .env.prod
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
       redis:
@@ -100,7 +112,7 @@ services:
       - .env.prod
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
       redis:
@@ -129,8 +141,10 @@ services:
     container_name: comments_nginx
     restart: unless-stopped
     depends_on:
-      - backend
-      - frontend_build
+      backend:
+        condition: service_healthy
+      frontend_build:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:8080:80"
     volumes:
