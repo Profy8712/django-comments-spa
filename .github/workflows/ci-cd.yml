@@ -60,7 +60,7 @@ jobs:
       - name: Setup SSH
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
@@ -74,10 +74,10 @@ jobs:
       - name: Deploy
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << 'EOF'
-            set -euo pipefail
+            set -e
 
             APP_DIR="/home/ubuntu/django-comments-spa"
             cd "$APP_DIR"
@@ -90,15 +90,15 @@ jobs:
 
             docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --force-recreate
             docker compose --env-file .env.prod -f docker-compose.prod.yml ps
-          EOF
+EOF
 
       - name: Healthcheck (on EC2 localhost via docker-nginx)
         shell: bash
         run: |
-          set -euo pipefail
+          set -e
 
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << 'EOF'
-            set -euo pipefail
+            set -e
 
             echo "Waiting for http://127.0.0.1:8080/api/comments/ ..."
             for i in {1..36}; do
@@ -115,4 +115,4 @@ jobs:
             docker logs --tail 150 comments_backend 2>/dev/null || true
             docker logs --tail 150 comments_nginx 2>/dev/null || true
             exit 1
-          EOF
+EOF
