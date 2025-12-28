@@ -71,11 +71,10 @@ services:
       daphne -b 0.0.0.0 -p 8000 core.asgi:application
       "
     healthcheck:
-      # Check API endpoint (root "/" may return 400). Add Host header to avoid DisallowedHost issues.
-      # Using wget to avoid curl dependency in slim images.
-      test: ["CMD-SHELL", "wget -qO- --header='Host: localhost' http://127.0.0.1:8000/api/comments/ >/dev/null 2>&1 || exit 1"]
+      # Pure python healthcheck (no curl/wget required)
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/comments/', timeout=3).read(1)"]
       interval: 5s
-      timeout: 3s
+      timeout: 5s
       retries: 30
       start_period: 60s
 
@@ -117,7 +116,7 @@ services:
         condition: service_started
     command: celery -A core beat -l info
 
-  # Builds SPA dist and copies it into a shared volume
+  # Build SPA dist and export into a shared volume
   frontend_build:
     build:
       context: ./frontend
@@ -127,9 +126,9 @@ services:
     restart: "no"
     volumes:
       - spa_dist:/dist
-    command: sh -lc "cp -r /export/dist/* /dist/"
+    command: sh -lc "rm -rf /dist/* && cp -r /export/dist/* /dist/"
 
-  # Serves SPA + proxies /api, /admin, /ws to backend
+  # Serve SPA + proxy to backend
   nginx:
     build:
       context: ./nginx
