@@ -6,7 +6,9 @@
 
         <div class="auth-status" :class="{ on: authed }">
           <span class="dot" :class="{ on: authed }" />
-          <span class="status-text" :class="{ on: authed }">{{ authed ? "Authorized" : "Anonymous" }}</span>
+          <span class="status-text" :class="{ on: authed }">
+            {{ authed ? "Authorized" : "Anonymous" }}
+          </span>
           <span v-if="me && (me.is_staff || me.is_superuser)" class="admin-badge">ADMIN</span>
         </div>
       </div>
@@ -26,16 +28,28 @@
         />
 
         <label class="lbl">Password</label>
-        <input
-          class="inp"
-          v-model="password"
-          type="password"
-          placeholder=""
-          autocomplete="off"
-          spellcheck="false"
-          :disabled="busy || authed"
-          @keydown.enter.prevent="onLogin"
-        />
+        <div class="password-field">
+          <input
+            class="inp inp-password"
+            v-model="password"
+            :type="showPassword ? 'text' : 'password'"
+            placeholder=""
+            autocomplete="off"
+            spellcheck="false"
+            :disabled="busy || authed"
+            @keydown.enter.prevent="onLogin"
+          />
+          <button
+            type="button"
+            class="eye-btn"
+            @click="showPassword = !showPassword"
+            :aria-label="showPassword ? 'Hide password' : 'Show password'"
+            :title="showPassword ? 'Hide password' : 'Show password'"
+            :disabled="busy || authed"
+          >
+            👁
+          </button>
+        </div>
 
         <div class="row">
           <button class="btn primary" :disabled="busy || authed" @click="onLogin">
@@ -66,18 +80,19 @@
 import { isAuthed, login, logout, getAccessToken } from "../api/auth";
 
 export default {
-  computed: {
-    hasJwt() {
-      return !!localStorage.getItem("access");
-    }
-  },
-
   name: "AuthBar",
   props: { me: { type: Object, default: null } },
   emits: ["auth-changed"],
 
+  computed: {
+    hasJwt() {
+      return !!localStorage.getItem("access");
+    },
+  },
+
   data() {
     return {
+      showPassword: false,
       authed: isAuthed(),
       username: "",
       password: "",
@@ -106,6 +121,7 @@ export default {
       if (!this.authed) {
         this.username = "";
         this.password = "";
+        this.showPassword = false;
       }
     },
 
@@ -124,6 +140,7 @@ export default {
 
         // after successful login: clear password (safe), keep username (optional)
         this.password = "";
+        this.showPassword = false;
 
         this.$emit("auth-changed");
       } catch (e) {
@@ -141,6 +158,7 @@ export default {
       // clear fields immediately (no waiting for event)
       this.username = "";
       this.password = "";
+      this.showPassword = false;
       this.error = "";
       this.busy = false;
 
@@ -178,7 +196,7 @@ export default {
   background: var(--surface-2);
   border-radius: 16px;
   padding: 14px;
-  box-shadow: 0 10px 26px rgba(0,0,0,0.18);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
 }
 
 .auth-head {
@@ -221,6 +239,10 @@ html[data-theme="light"] .auth-status .dot {
   background: var(--success);
 }
 
+html[data-theme="light"] .auth-status.on .dot {
+  background: #22c55e !important;
+}
+
 .auth-form {
   display: grid;
   gap: 8px;
@@ -243,6 +265,40 @@ html[data-theme="light"] .auth-status .dot {
 
 .inp:focus {
   border-color: var(--border-strong);
+}
+
+/* Password field with "eye" button */
+.password-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inp-password {
+  padding-right: 44px; /* space for the eye button */
+  width: 100%;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 4px;
+  line-height: 1;
+}
+
+.eye-btn:hover {
+  opacity: 1;
+}
+
+.eye-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .row {
@@ -271,6 +327,7 @@ html[data-theme="light"] .auth-status .dot {
   background: rgba(90, 150, 255, 0.22);
   border-color: rgba(90, 150, 255, 0.35);
 }
+
 html[data-theme="light"] .btn.primary {
   background: rgba(37, 99, 235, 0.10);
   border-color: rgba(37, 99, 235, 0.35);
@@ -280,6 +337,7 @@ html[data-theme="light"] .btn.primary {
   background: rgba(255, 90, 120, 0.20);
   border-color: rgba(255, 90, 120, 0.30);
 }
+
 html[data-theme="light"] .btn.danger {
   background: rgba(225, 29, 72, 0.08);
   border-color: rgba(225, 29, 72, 0.30);
@@ -315,6 +373,7 @@ html[data-theme="light"] .btn.danger {
   border: 1px solid rgba(239, 68, 68, 0.45);
   color: #ef4444;
 }
+
 .dot.on {
   background: rgba(34, 197, 94, 0.9);
 }
@@ -323,19 +382,8 @@ html[data-theme="light"] .btn.danger {
   color: rgba(148, 163, 184, 0.85);
   font-weight: 700;
 }
+
 .status-text.on {
   color: rgba(34, 197, 94, 0.95);
 }
-
-html[data-theme="light"] .auth-status.on .dot { background: #22c55e !important; }
 </style>
-
-/* Auth status dot: green when authorized */
-.auth-status.on .dot { background: #22c55e; }
-
-
-/* Fix: auth dot green in light theme when authorized */
-html[data-theme="light"] .auth-status.on .dot {
-    background: #22c55e !important;
-}
-
