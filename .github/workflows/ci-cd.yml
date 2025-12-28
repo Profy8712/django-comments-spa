@@ -22,6 +22,7 @@ jobs:
 
       - name: Install backend deps
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
@@ -33,6 +34,7 @@ jobs:
           ELASTICSEARCH_ENABLED: "0"
           DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
         run: |
+          set -euo pipefail
           python manage.py check
 
       - name: Set up Node
@@ -44,11 +46,15 @@ jobs:
 
       - name: Install frontend deps
         working-directory: frontend
-        run: npm ci
+        run: |
+          set -euo pipefail
+          npm ci
 
       - name: Build frontend
         working-directory: frontend
-        run: npm run build
+        run: |
+          set -euo pipefail
+          npm run build
 
   cd:
     name: CD (deploy to EC2)
@@ -60,7 +66,7 @@ jobs:
       - name: Setup SSH
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
@@ -74,45 +80,45 @@ jobs:
       - name: Deploy
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << 'EOF'
-            set -e
+          set -euo pipefail
 
-            APP_DIR="/home/ubuntu/django-comments-spa"
-            cd "$APP_DIR"
+          APP_DIR="/home/ubuntu/django-comments-spa"
+          cd "$APP_DIR"
 
-            git fetch --all
-            git reset --hard origin/main
+          git fetch --all
+          git reset --hard origin/main
 
-            docker compose --env-file .env.prod -f docker-compose.prod.yml down --remove-orphans
-            sleep 2
+          docker compose --env-file .env.prod -f docker-compose.prod.yml down --remove-orphans
+          sleep 2
 
-            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --force-recreate
-            docker compose --env-file .env.prod -f docker-compose.prod.yml ps
+          docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --force-recreate
+          docker compose --env-file .env.prod -f docker-compose.prod.yml ps
 EOF
 
       - name: Healthcheck (on EC2 localhost via docker-nginx)
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << 'EOF'
-            set -e
+          set -euo pipefail
 
-            echo "Waiting for http://127.0.0.1:8080/api/comments/ ..."
-            for i in {1..36}; do
-              if curl -fsS http://127.0.0.1:8080/api/comments/ >/dev/null; then
-                echo "OK: docker-nginx -> backend works"
-                exit 0
-              fi
-              echo "Still waiting... ($i/36)"
-              sleep 5
-            done
+          echo "Waiting for http://127.0.0.1:8080/api/comments/ ..."
+          for i in {1..36}; do
+            if curl -fsS http://127.0.0.1:8080/api/comments/ >/dev/null; then
+              echo "OK: docker-nginx -> backend works"
+              exit 0
+            fi
+            echo "Still waiting... ($i/36)"
+            sleep 5
+          done
 
-            echo "FAILED. Diagnostics:"
-            docker compose --env-file .env.prod -f /home/ubuntu/django-comments-spa/docker-compose.prod.yml ps || true
-            docker logs --tail 150 comments_backend 2>/dev/null || true
-            docker logs --tail 150 comments_nginx 2>/dev/null || true
-            exit 1
+          echo "FAILED. Diagnostics:"
+          docker compose --env-file .env.prod -f /home/ubuntu/django-comments-spa/docker-compose.prod.yml ps || true
+          docker logs --tail 150 comments_backend 2>/dev/null || true
+          docker logs --tail 150 comments_nginx 2>/dev/null || true
+          exit 1
 EOF
