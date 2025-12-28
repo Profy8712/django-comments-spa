@@ -20,7 +20,8 @@ staticfiles/
 static/
 
 # Django migrations
-*/migrations/*
+*/migrations/__pycache__/
+!*/migrations/*.py
 !*/migrations/__init__.py
 
 # Environment variables
