@@ -180,7 +180,7 @@
     </div>
 
     <!-- Attachments -->
-    <div class="section">
+    <div v-if="hasJwt" class="section">
       <div class="section-title">Attachments</div>
 
       <div class="form-group">
@@ -217,9 +217,7 @@
             :disabled="submitting || !hasJwt"
           />
         </div>
-
-        <p v-if="!hasJwt" class="hint-lock">🔒 Login to attach files.</p>
-        <div v-else class="hint-text">Allowed: images (JPG/PNG/GIF/WEBP) and TXT (≤100 KB).</div>
+        <div class="hint-text">Allowed: images (JPG/PNG/GIF/WEBP) and TXT (≤100 KB).</div>
 
         <div v-if="hasJwt && selectedFiles.length" class="files-list">
           <div v-for="(f, idx) in selectedFiles" :key="idx" class="file-item">
@@ -1336,3 +1334,109 @@ html[data-theme="light"] .spinner {
 }
 
 </style>
+
+/* --- Compact mode (polish) --- */
+.section {
+  padding: 14px !important;
+}
+
+.section-title {
+  margin-bottom: 10px !important;
+}
+
+.grid3 {
+  gap: 10px !important;
+}
+
+.form-group {
+  margin-bottom: 0 !important;
+}
+
+.form-label {
+  margin-bottom: 6px !important;
+}
+
+.form-input,
+textarea.form-input,
+.textarea,
+.inp,
+textarea {
+  padding: 9px 12px !important;
+}
+
+textarea {
+  min-height: 130px !important;
+}
+
+/* Captcha row tighter */
+.captcha-row,
+.captcha-wrap,
+.security-row {
+  gap: 10px !important;
+}
+
+/* CAPTCHA compact */
+.captcha-img {
+  height: 42px !important;
+  width: auto !important;
+}
+
+.captcha-refresh,
+.captcha-btn {
+  width: 42px !important;
+  height: 42px !important;
+  padding: 0 !important;
+}
+
+.captcha-input {
+  height: 42px !important;
+}
+
+/* --- Compact CAPTCHA (polish) --- */
+.captcha-row {
+  align-items: center;
+  gap: 10px;
+}
+
+.captcha-image {
+  height: 42px;
+  width: auto;
+  border-radius: 10px;
+}
+
+.captcha-reload {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 12px;
+}
+
+.captcha-input {
+  height: 42px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* --- Compact sections --- */
+.section { padding: 14px; }
+.section-title { margin-bottom: 10px; }
+
+/* --- Compact Attachments dropzone --- */
+.dropzone {
+  padding: 12px 14px;
+  min-height: 72px;
+}
+
+.dz-title {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.dz-sub {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.dz-btn {
+  padding: 9px 14px;
+}
