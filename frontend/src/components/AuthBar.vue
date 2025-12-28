@@ -2,75 +2,106 @@
   <div class="auth-wrap">
     <div class="auth-card">
       <div class="auth-head">
-        <div class="auth-title">Auth</div>
+        <div class="auth-left">
+          <div class="auth-title">Auth</div>
+          <button
+            v-if="authed"
+            type="button"
+            class="auth-toggle"
+            @click="collapsed = !collapsed"
+            :aria-expanded="(!collapsed).toString()"
+            :title="collapsed ? 'Show auth details' : 'Hide auth details'"
+          >
+            {{ collapsed ? "Show" : "Hide" }}
+          </button>
+        </div>
 
-        <div class="auth-status" :class="{ on: authed }">
-          <span class="dot" :class="{ on: authed }" />
-          <span class="status-text" :class="{ on: authed }">
-            {{ authed ? "Authorized" : "Anonymous" }}
-          </span>
-          <span v-if="me && (me.is_staff || me.is_superuser)" class="admin-badge">ADMIN</span>
+        <div class="auth-right">
+          <div class="auth-status" :class="{ on: authed }">
+            <span class="dot" :class="{ on: authed }" />
+            <span class="status-text" :class="{ on: authed }">
+              {{ authed ? "Authorized" : "Anonymous" }}
+            </span>
+            <span v-if="me && (me.is_staff || me.is_superuser)" class="admin-badge">ADMIN</span>
+          </div>
+
+          <button
+            v-if="authed"
+            class="btn danger compact"
+            type="button"
+            @click="onLogout"
+            :disabled="busy"
+            title="Logout"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
-      <div class="auth-form">
-        <label class="lbl">Username</label>
-        <input
-          class="inp"
-          v-model.trim="username"
-          placeholder=""
-          autocomplete="off"
-          autocapitalize="none"
-          spellcheck="false"
-          inputmode="text"
-          :disabled="busy || authed"
-          @keydown.enter.prevent="onLogin"
-        />
-
-        <label class="lbl">Password</label>
-        <div class="password-field">
+      <div v-if="!authed || !collapsed" class="auth-body">
+        <div class="auth-form">
+          <label class="lbl">Username</label>
           <input
-            class="inp inp-password"
-            v-model="password"
-            :type="showPassword ? 'text' : 'password'"
+            ref="userRef"
+            class="inp"
+            v-model.trim="username"
             placeholder=""
             autocomplete="off"
+            autocapitalize="none"
             spellcheck="false"
+            inputmode="text"
             :disabled="busy || authed"
             @keydown.enter.prevent="onLogin"
           />
-          <button
-            type="button"
-            class="eye-btn"
-            @click="showPassword = !showPassword"
-            :aria-label="showPassword ? 'Hide password' : 'Show password'"
-            :title="showPassword ? 'Hide password' : 'Show password'"
-            :disabled="busy || authed"
-          >
-            👁
-          </button>
+
+          <label class="lbl">Password</label>
+          <div class="password-field">
+            <input
+              class="inp inp-password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder=""
+              autocomplete="off"
+              spellcheck="false"
+              :disabled="busy || authed"
+              @keydown.enter.prevent="onLogin"
+            />
+            <button
+              type="button"
+              class="eye-btn"
+              @click="showPassword = !showPassword"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :title="showPassword ? 'Hide password' : 'Show password'"
+              :disabled="busy || authed"
+            >
+              👁
+            </button>
+          </div>
+
+          <div class="row">
+            <button class="btn primary" :disabled="busy || authed" @click="onLogin" type="button">
+              <span v-if="busy" class="spinner" aria-hidden="true"></span>
+              {{ busy ? "Logging in..." : "Login" }}
+            </button>
+
+            <button
+              class="btn ghost"
+              type="button"
+              :disabled="!authed"
+              @click="copyBearer"
+              title="Copy Authorization: Bearer <token>"
+            >
+              Copy Bearer
+            </button>
+          </div>
+
+          <div v-if="error" class="error">{{ error }}</div>
         </div>
 
-        <div class="row">
-          <button class="btn primary" :disabled="busy || authed" @click="onLogin">
-            {{ busy ? "Logging in..." : "Login" }}
-          </button>
-
-          <button class="btn danger" :disabled="!authed" @click="onLogout">
-            Logout
-          </button>
-
-          <button class="btn ghost" type="button" :disabled="!authed" @click="copyBearer">
-            Copy Bearer
-          </button>
+        <div class="muted-note">
+          Tokens are stored in <code>localStorage</code>. UI updates via
+          <code>auth-changed</code> event.
         </div>
-
-        <div v-if="error" class="error">{{ error }}</div>
-      </div>
-
-      <div class="muted-note">
-        Tokens are stored in <code>localStorage</code>. UI updates via
-        <code>auth-changed</code> event.
       </div>
     </div>
   </div>
@@ -84,12 +115,6 @@ export default {
   props: { me: { type: Object, default: null } },
   emits: ["auth-changed"],
 
-  computed: {
-    hasJwt() {
-      return !!localStorage.getItem("access");
-    },
-  },
-
   data() {
     return {
       showPassword: false,
@@ -98,6 +123,7 @@ export default {
       password: "",
       busy: false,
       error: "",
+      collapsed: false,
     };
   },
 
@@ -105,6 +131,7 @@ export default {
     this._onAuthChangedBound = () => this.sync();
     window.addEventListener("auth-changed", this._onAuthChangedBound);
     this.sync();
+    this.focusFirst();
   },
 
   beforeUnmount() {
@@ -112,16 +139,29 @@ export default {
   },
 
   methods: {
+    focusFirst() {
+      if (this.authed) return;
+      this.$nextTick(() => this.$refs.userRef?.focus?.());
+    },
+
     sync() {
+      const prev = this.authed;
       this.authed = isAuthed();
       this.error = "";
       this.busy = false;
 
-      // IMPORTANT: strict logout UX => clear BOTH fields when anonymous
+      // strict logout UX => clear BOTH fields when anonymous
       if (!this.authed) {
         this.username = "";
         this.password = "";
         this.showPassword = false;
+        this.collapsed = false; // show form when anonymous
+        this.focusFirst();
+      }
+
+      // after successful login => collapse by default
+      if (!prev && this.authed) {
+        this.collapsed = true;
       }
     },
 
@@ -142,6 +182,9 @@ export default {
         this.password = "";
         this.showPassword = false;
 
+        // collapse UX
+        this.collapsed = true;
+
         this.$emit("auth-changed");
       } catch (e) {
         this.error = e?.message || "Login failed.";
@@ -161,8 +204,10 @@ export default {
       this.showPassword = false;
       this.error = "";
       this.busy = false;
+      this.collapsed = false;
 
       this.$emit("auth-changed");
+      this.focusFirst();
     },
 
     async copyBearer() {
@@ -187,10 +232,10 @@ export default {
 
 <style scoped>
 .auth-wrap {
-  margin: 18px 0;
+  margin: 14px 0;
 }
 
-/* IMPORTANT: no opacity on wrappers (it makes "fog") */
+/* no opacity on wrappers (it makes "fog") */
 .auth-card {
   border: 1px solid var(--border);
   background: var(--surface-2);
@@ -204,12 +249,38 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+}
+
+.auth-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .auth-title {
   font-weight: 900;
   letter-spacing: 0.2px;
+}
+
+.auth-toggle {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+}
+.auth-toggle:hover {
+  border-color: var(--border-strong);
+}
+
+.auth-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .auth-status {
@@ -316,6 +387,15 @@ html[data-theme="light"] .auth-status.on .dot {
   color: inherit;
   font-weight: 900;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn.compact {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
 }
 
 .btn:disabled {
@@ -329,18 +409,18 @@ html[data-theme="light"] .auth-status.on .dot {
 }
 
 html[data-theme="light"] .btn.primary {
-  background: rgba(37, 99, 235, 0.10);
+  background: rgba(37, 99, 235, 0.1);
   border-color: rgba(37, 99, 235, 0.35);
 }
 
 .btn.danger {
-  background: rgba(255, 90, 120, 0.20);
-  border-color: rgba(255, 90, 120, 0.30);
+  background: rgba(255, 90, 120, 0.2);
+  border-color: rgba(255, 90, 120, 0.3);
 }
 
 html[data-theme="light"] .btn.danger {
   background: rgba(225, 29, 72, 0.08);
-  border-color: rgba(225, 29, 72, 0.30);
+  border-color: rgba(225, 29, 72, 0.3);
 }
 
 .btn.ghost {
@@ -353,7 +433,7 @@ html[data-theme="light"] .btn.danger {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(255, 90, 120, 0.35);
-  background: rgba(255, 90, 120, 0.10);
+  background: rgba(255, 90, 120, 0.1);
 }
 
 .muted-note {
@@ -385,5 +465,22 @@ html[data-theme="light"] .btn.danger {
 
 .status-text.on {
   color: rgba(34, 197, 94, 0.95);
+}
+
+/* spinner */
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  animation: spin 0.75s linear infinite;
+}
+html[data-theme="light"] .spinner {
+  border-color: rgba(15, 23, 42, 0.20);
+  border-top-color: rgba(15, 23, 42, 0.75);
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

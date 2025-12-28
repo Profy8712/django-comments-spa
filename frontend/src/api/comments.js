@@ -51,20 +51,24 @@ export function createComment(data, parentId = null) {
   return apiPostJson("/api/comments/", payload);
 }
 
-/** ✅ If you have upload endpoint */
+/**
+ * If your backend supports multipart to /api/comments/ for creating comment with files.
+ * Keep as-is to not break current flows.
+ */
 export function createCommentWithFiles(formData) {
-  // In your project you likely post to /api/comments/ as multipart
-  // This should exist only if your backend supports it.
   return apiPostForm("/api/comments/", formData);
 }
 
-// NEW (Variant C): upload files first, then create comment with attachment_ids + upload_key
+/**
+ * Variant C: upload files first, then create comment with attachment_ids + upload_key.
+ * Endpoint must exist on backend: POST /api/comments/upload/
+ */
 export async function uploadFiles(files) {
   const uploaded = [];
+
   for (const file of files || []) {
     const fd = new FormData();
     fd.append("file", file);
-    // backend: POST /api/comments/upload/
     const one = await apiPostForm("/api/comments/upload/", fd);
     uploaded.push(one);
   }
@@ -74,15 +78,16 @@ export async function uploadFiles(files) {
   return { attachment_ids, upload_key, uploaded };
 }
 
-/** ✅ NEW: delete comment */
+/** delete comment (normal endpoint) */
 export function deleteComment(id) {
   if (!id) throw new Error("deleteComment: id is required");
   return apiDelete(`/api/comments/${id}/`);
 }
 
-
-// Admin-only delete endpoint:
-// DELETE /api/comments/admin/comments/<id>/
+/**
+ * Admin-only delete endpoint:
+ * DELETE /api/comments/admin/comments/<id>/
+ */
 export function adminDeleteComment(commentId) {
   if (!commentId) throw new Error("commentId is required");
   return apiDelete(`/api/comments/admin/comments/${commentId}/`);

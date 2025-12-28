@@ -18,8 +18,14 @@
 
     <AuthBar :me="me" @auth-changed="handleAuthChanged" />
 
+    <div class="divider mt" />
+
     <section class="section">
-      <h2>New comment</h2>
+      <div class="section-head-lite">
+        <h2>New comment</h2>
+        <p class="section-sub">All fields with <span class="req">*</span> are required.</p>
+      </div>
+
       <CommentForm :me="me" :reset-key="formResetKey" @created="handleCreated" />
     </section>
 
@@ -43,7 +49,6 @@
       <div v-if="loading" class="loading">Loading comments...</div>
 
       <div v-else class="comments-wrap">
-        <!-- TABLE: flat list (all comments including replies) -->
         <details v-if="flatComments.length" class="comments-table-wrap">
           <summary class="muted">Show comments table</summary>
 
@@ -71,7 +76,6 @@
           </table>
         </details>
 
-        <!-- CARDS: tree list (root + nested children) -->
         <CommentTree
           v-if="treeComments.length"
           :comments="treeComments"
@@ -173,13 +177,11 @@ export default {
       );
     },
 
-    // FLAT: raw list from API (table)
     flatComments() {
       if (!this.comments) return [];
       return this.comments.results || this.comments || [];
     },
 
-    // TREE: roots + nested children (backend already returns children)
     treeComments() {
       return this.flatComments;
     },
@@ -255,7 +257,6 @@ export default {
       await this.loadComments();
     },
 
-    // called after create from CommentForm / CommentTree
     async handleCreated(payload) {
       const id =
         payload?.created?.id ||
@@ -374,11 +375,11 @@ export default {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 22px 16px 40px;
+  padding: 18px 16px 40px;
 }
 
 .top {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -417,6 +418,10 @@ export default {
   letter-spacing: 0.2px;
 }
 
+.divider.mt {
+  margin: 10px 0 4px;
+}
+
 .section {
   margin-top: 14px;
   padding: 14px;
@@ -432,6 +437,24 @@ html[data-theme="light"] .section {
 .section h2 {
   margin: 0 0 10px;
   font-size: 18px;
+}
+
+.section-head-lite {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+
+.section-sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.req {
+  color: var(--danger, #ff5a78);
+  font-weight: 900;
 }
 
 .section-head {
@@ -555,14 +578,5 @@ html[data-theme="light"] .btn-outline:hover {
 }
 html[data-theme="light"] .row-clickable:hover td {
   background: rgba(37, 99, 235, 0.06);
-}
-
-.comment-highlight {
-  outline: 2px solid rgba(96, 165, 250, 0.75);
-  background: rgba(96, 165, 250, 0.1) !important;
-}
-html[data-theme="light"] .comment-highlight {
-  outline: 2px solid rgba(37, 99, 235, 0.55);
-  background: rgba(37, 99, 235, 0.08) !important;
 }
 </style>
