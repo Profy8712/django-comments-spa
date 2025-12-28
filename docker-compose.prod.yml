@@ -71,13 +71,9 @@ services:
       daphne -b 0.0.0.0 -p 8000 core.asgi:application
       "
     healthcheck:
-      # Use API endpoint instead of "/" to avoid 400 due to host/root routing.
-      # Use wget to avoid curl dependency in slim/alpine images.
-      test:
-        [
-          "CMD-SHELL",
-          "wget -qO- --header='Host: localhost' http://127.0.0.1:8000/api/comments/ >/dev/null 2>&1 || exit 1",
-        ]
+      # Check API endpoint (root "/" may return 400). Add Host header to avoid DisallowedHost issues.
+      # Using wget to avoid curl dependency in slim images.
+      test: ["CMD-SHELL", "wget -qO- --header='Host: localhost' http://127.0.0.1:8000/api/comments/ >/dev/null 2>&1 || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 30
