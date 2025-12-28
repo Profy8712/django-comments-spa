@@ -5,13 +5,11 @@
     <div v-if="toast.show" class="toast" :class="toast.type" role="status" aria-live="polite">
       {{ toast.msg }}
     </div>
-
-    <!-- User info -->
-    <div class="section">
+    <div v-if="!hasJwt" class="section">
       <div class="section-title">User info</div>
 
       <div class="grid3">
-        <div v-if="!hasJwt" class="form-group">
+        <div class="form-group">
           <label class="form-label">User Name <span class="req">*</span></label>
           <input
             ref="userRef"
@@ -25,7 +23,7 @@
           <p v-if="errors.user_name" class="error-text">{{ errors.user_name }}</p>
         </div>
 
-        <div v-if="!hasJwt" class="form-group">
+        <div class="form-group">
           <label class="form-label">Email <span class="req">*</span></label>
           <input
             class="form-input"
@@ -38,8 +36,8 @@
           <p v-if="errors.email" class="error-text">{{ errors.email }}</p>
         </div>
 
-        <div class="form-group" :class="{ span3: hasJwt }">
-            <label class="form-label">Home page</label>
+        <div class="form-group">
+          <label class="form-label">Home page</label>
           <input
             class="form-input"
             :class="{ invalid: !!errors.homepage }"
@@ -1304,9 +1302,7 @@ html[data-theme="light"] .spinner {
 }
 
 
-.span3 {
-  grid-column: 1 / -1;
-}
+
 
 
 
