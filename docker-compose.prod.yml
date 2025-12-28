@@ -144,6 +144,7 @@ services:
       - "127.0.0.1:8080:80"
     volumes:
       - spa_dist:/usr/share/nginx/html:ro
+      - ./media:/var/www/media:ro
 
 volumes:
   postgres_data:
