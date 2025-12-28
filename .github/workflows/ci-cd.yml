@@ -56,6 +56,10 @@ jobs:
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
+    env:
+      BASE_URL: https://comments-spa-t.duckdns.org
+      API_URL: https://comments-spa-t.duckdns.org/api/comments/
+
     steps:
       - name: Setup SSH
         shell: bash
@@ -67,7 +71,6 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-          # Create known_hosts safely (no need to store it as a secret)
           touch ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
@@ -83,31 +86,42 @@ jobs:
               set -euo pipefail
 
               APP_DIR="/home/ubuntu/django-comments-spa"
-
               cd "$APP_DIR"
+
               git fetch --all
               git reset --hard origin/main
 
-              # IMPORTANT: avoid "container is marked for removal" race condition
               docker compose --env-file .env.prod -f docker-compose.prod.yml down --remove-orphans
-              sleep 5
+              sleep 3
 
               docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 
-              # Optional: print status for logs
               docker compose --env-file .env.prod -f docker-compose.prod.yml ps
           EOF
 
-      - name: Healthcheck
+      - name: Healthcheck (on EC2 localhost)
+        shell: bash
         run: |
-          echo "Waiting for backend..."
-          for i in {1..30}; do
-            if curl -fs https://comments-spa-t.duckdns.org/api/comments/ >/dev/null; then
-              echo "Backend is healthy"
-              exit 0
-            fi
-            echo "Still waiting... ($i/30)"
-            sleep 5
-          done
-          echo "Backend did not become healthy in time"
-          exit 1
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_rsa \
+            -o StrictHostKeyChecking=yes \
+            "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" << 'EOF'
+              set -euo pipefail
+
+              echo "Waiting for nginx -> backend on localhost..."
+              for i in {1..36}; do
+                if curl -fsS http://127.0.0.1:8080/api/comments/ >/dev/null; then
+                  echo "OK: API reachable on localhost"
+                  exit 0
+                fi
+                echo "Still waiting... ($i/36)"
+                sleep 5
+              done
+
+              echo "FAILED: API not reachable. Diagnostics:"
+              docker compose --env-file .env.prod -f /home/ubuntu/django-comments-spa/docker-compose.prod.yml ps || true
+              docker logs --tail 120 comments_backend 2>/dev/null || true
+              docker logs --tail 120 comments_nginx 2>/dev/null || true
+              exit 1
+          EOF
