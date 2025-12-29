@@ -128,7 +128,7 @@
           ref="textRef"
           class="form-textarea"
           :class="{ invalid: !!errors.text }"
-          v-model="form.text"
+          v-model="form.text" @keydown.enter.exact.prevent="onSubmit" @keydown.enter.shift.exact.stop
           rows="7"
           :disabled="submitting"
           placeholder="Write your comment... (allowed tags: [i] [strong] [code] [a])"
@@ -332,7 +332,7 @@ export default {
       }
 
       // JWT: user/email should be prefilled
-      return !!this.form.user_name?.trim() && !!this.form.email?.trim();
+      return true;
     },
 
     previewHtml() {
@@ -708,17 +708,15 @@ export default {
 
       if (!this.form.text?.trim()) this.errors.text = "Text is required.";
 
-      if (!this.hasJwt) {
-        if (!this.form.user_name?.trim()) this.errors.user_name = "User Name is required.";
-        if (!this.form.email?.trim()) this.errors.email = "Email is required.";
-        if (!this.form.captcha_key || !this.form.captcha_value) {
-          this.errors.captcha_value = "CAPTCHA is required.";
+        if (!this.hasJwt) {
+          if (!this.form.user_name?.trim()) this.errors.user_name = "User Name is required.";
+          if (!this.form.email?.trim()) this.errors.email = "Email is required.";
+          if (!this.form.captcha_key || !this.form.captcha_value) {
+            this.errors.captcha_value = "CAPTCHA is required.";
+          }
+        } else {
+          // JWT: allow submit even if /me is not loaded yet (backend derives user info from token)
         }
-      } else {
-        if (!this.form.user_name?.trim() || !this.form.email?.trim()) {
-          this.errors.non_field = "User info is not loaded yet. Please try again in a moment.";
-        }
-      }
 
       if (Object.keys(this.errors).length) {
         this.showToast("error", "Validation failed.");
@@ -736,6 +734,13 @@ export default {
         };
 
         const parentId = this.parentIdInternal;
+ 
+          // JWT: do not send empty user_name/email (backend uses token)
+          if (this.hasJwt) {
+            if (!String(payload.user_name || "").trim()) delete payload.user_name;
+            if (!String(payload.email || "").trim()) delete payload.email;
+          }
+
 
         if (!this.hasJwt) {
           payload.captcha_key = this.form.captcha_key;
