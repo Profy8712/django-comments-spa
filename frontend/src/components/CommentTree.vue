@@ -17,7 +17,7 @@
 
         <div class="meta comment-meta">
           <div class="line1">
-            <span class="author comment-author">{{ c.user_name || c.username || "Anonymous" }}</span>
+            <span class="author comment-author">{{ c.user_name || c.username || $t("auth.anonymous") }}</span>
             <span class="muted dot">•</span>
             <span class="time muted">{{ formatDate(c.created_at || c.created || c.createdAt) }}</span>
           </div>
@@ -106,7 +106,7 @@
           @click.stop="toggleExpand(c.id)"
           title="More replies hidden"
         >
-          {{ expandedIds.has(c.id) ? "Hide replies" : "View more replies" }}
+          {{ expandedIds.has(c.id) ? ("comments.hideReplies") : ("comments.viewMoreReplies") }}
         </button>
       </div>
   </div>
@@ -418,7 +418,7 @@ html:not([data-theme="light"]) .comment-item.is-child {
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* "{{ expandedIds.has(c.id) ? "Hide replies" : "View more replies" }}" */
+/* "{{ expandedIds.has(c.id) ? ("comments.hideReplies") : ("comments.viewMoreReplies") }}" */
 .more-replies {
   margin-top: 8px;
   font-size: 0.92rem;

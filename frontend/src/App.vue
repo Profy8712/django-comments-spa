@@ -1,5 +1,6 @@
 <template>
-  <div class="app">
+  <div style="position:fixed;z-index:99999;right:12px;bottom:12px;padding:8px 10px;border:2px solid red;background:rgba(255,255,255,.9);font-weight:800">I18N TEST</div>
+<div class="app">
     <header class="top">
       <div class="brand">
         <div class="title">Comments SPA</div>
@@ -22,8 +23,8 @@
 
     <section class="section">
       <div class="section-head-lite">
-        <h2>New comment</h2>
-        <p class="section-sub">All fields with <span class="req">*</span> are required.</p>
+        <h2>{{ $t("form.newComment") }}</h2>
+        <p class="section-sub">{{ $t("form.required") }}</p>
       </div>
 
       <CommentForm :me="me" :reset-key="formResetKey" @created="handleCreated" />
@@ -31,12 +32,12 @@
 
     <section class="section">
       <div class="section-head">
-        <h2>Comments</h2>
+        <h2>{{ $t("comments.title") }}</h2>
 
         <div class="controls">
-          <label>Sort by:</label>
+          <label>{{ $t("comments.sortBy") }}</label>
           <select v-model="ordering" @change="onOrderingChange">
-            <option value="-created_at">Newest first (LIFO)</option>
+            <option value="-created_at">{{ $t("comments.newestFirst") }}</option>
             <option value="created_at">Oldest first</option>
             <option value="user_name">User name A-Z</option>
             <option value="-user_name">User name Z-A</option>
@@ -50,7 +51,7 @@
 
       <div v-else class="comments-wrap">
         <details v-if="flatComments.length" class="comments-table-wrap">
-          <summary class="muted">Show comments table</summary>
+          <summary class="muted">{{ $t("comments.showTable") }}</summary>
 
           <table class="comments-table">
             <thead>

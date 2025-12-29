@@ -3,24 +3,25 @@
     <div class="auth-card">
       <div class="auth-head">
         <div class="auth-left">
-          <div class="auth-title">Auth</div>
+          <div class="auth-title">{{ $t("auth.title") }}</div>
           <button
             v-if="authed"
             type="button"
             class="auth-toggle"
             @click="collapsed = !collapsed"
             :aria-expanded="(!collapsed).toString()"
-            :title="collapsed ? 'Show auth details' : 'Hide auth details'"
+            :title="collapsed ? $t('auth.show') : $t('auth.hide')"
           >
-            {{ collapsed ? "Show" : "Hide" }}
+            {{ collapsed ? $t("auth.show") : $t("auth.hide") }}
           </button>
         </div>
 
         <div class="auth-right">
-          <div class="auth-status" :class="{ on: authed }">
+            <LanguageSwitcher />
+<div class="auth-status" :class="{ on: authed }">
             <span class="dot" :class="{ on: authed }" />
             <span class="status-text" :class="{ on: authed }">
-              {{ authed ? "Authorized" : "Anonymous" }}
+              {{ authed ? $t("auth.authorized") : $t("auth.anonymous") }}
             </span>
             <span v-if="me && (me.is_staff || me.is_superuser)" class="admin-badge">ADMIN</span>
           </div>
@@ -31,16 +32,14 @@
             type="button"
             @click="onLogout"
             :disabled="busy"
-            title="Logout"
-          >
-            Logout
-          </button>
+            :title="$t('auth.logout')"
+          >{{ $t("auth.logout") }}</button>
         </div>
       </div>
 
       <div v-if="!authed || !collapsed" class="auth-body">
         <div class="auth-form">
-          <label class="lbl">Username</label>
+          <label class="lbl">{{ $t("auth.username") }}</label>
           <input
             ref="userRef"
             class="inp"
@@ -54,7 +53,7 @@
             @keydown.enter.prevent="onLogin"
           />
 
-          <label class="lbl">Password</label>
+          <label class="lbl">{{ $t("auth.password") }}</label>
           <div class="password-field">
             <input
               class="inp inp-password"
@@ -70,8 +69,8 @@
               type="button"
               class="eye-btn"
               @click="showPassword = !showPassword"
-              :aria-label="showPassword ? 'Hide password' : 'Show password'"
-              :title="showPassword ? 'Hide password' : 'Show password'"
+              :aria-label="showPassword ? $t('auth.hide') : $t('auth.show')"
+              :title="showPassword ? $t('auth.hide') : $t('auth.show')"
               :disabled="busy || authed"
             >
               👁
@@ -81,7 +80,7 @@
           <div class="row">
             <button class="btn primary" :disabled="busy || authed" @click="onLogin" type="button">
               <span v-if="busy" class="spinner" aria-hidden="true"></span>
-              {{ busy ? "Logging in..." : "Login" }}
+              {{ busy ? ('auth.loggingIn') : ('auth.login') }}
             </button>
 
             <button
@@ -89,18 +88,15 @@
               type="button"
               :disabled="!authed"
               @click="copyBearer"
-              title="Copy Authorization: Bearer <token>"
-            >
-              Copy Bearer
-            </button>
+              :title="('auth.copyBearerTitle')"
+            >{{ ('auth.copyBearer') }}</button>
           </div>
 
           <div v-if="error" class="error">{{ error }}</div>
         </div>
 
         <div class="muted-note">
-          Tokens are stored in <code>localStorage</code>. UI updates via
-          <code>auth-changed</code> event.
+          {{ ('auth.tokensNote') }} <code>localStorage</code>. {{ ('auth.updatesVia') }} <code>auth-changed</code> {{ ('auth.event') }}.
         </div>
       </div>
     </div>
@@ -109,9 +105,11 @@
 
 <script>
 import { isAuthed, login, logout, getAccessToken } from "../api/auth";
+import LanguageSwitcher from "./LanguageSwitcher.vue";
 
 export default {
   name: "AuthBar",
+  components: { LanguageSwitcher },
   props: { me: { type: Object, default: null } },
   emits: ["auth-changed"],
 
