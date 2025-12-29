@@ -79,6 +79,9 @@ class CommentChildSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+
     attachments = AttachmentSerializer(many=True, read_only=True)
     children = serializers.SerializerMethodField()
 
@@ -158,6 +161,8 @@ class CommentSerializer(serializers.ModelSerializer):
         is_auth = bool(user and user.is_authenticated)
 
         if is_auth:
+            attrs["user_name"] = getattr(user, "username", "") or attrs.get("user_name") or ""
+            attrs["email"] = getattr(user, "email", "") or attrs.get("email") or ""
             attrs.pop("captcha_key", None)
             attrs.pop("captcha_value", None)
             return attrs

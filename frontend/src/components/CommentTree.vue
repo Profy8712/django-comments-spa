@@ -78,7 +78,7 @@
           :isAdmin="isAdmin"
           :me="me"
           :reset-key="resetKey"
-          @changed="onChanged"
+          @created="onChanged"
           @cancel="toggleReply(null)"
         />
       </div>
