@@ -1,5 +1,13 @@
 # 🌟 Django Comments SPA — Production‑Style Backend Project
 
+## ⚡ TL;DR
+
+- Full-stack production-style comments system
+- Django + DRF + Channels + Celery + Redis
+- Vue 3 SPA with real-time updates
+- JWT auth + CAPTCHA hybrid security
+- Dockerized, deployed on AWS EC2 with HTTPS
+
 A **production‑style Single Page Application (SPA)** for managing **hierarchical comments**, built with a strong focus on **backend architecture**, **security**, **scalability**, and **real‑world deployment practices**.
 
 This project demonstrates  Django backend solution** combined with a modern SPA frontend and a realistic Docker‑based deployment on AWS EC2.
@@ -32,9 +40,26 @@ The project intentionally goes beyond simple CRUD to show **production thinking*
 6. Comment is saved to PostgreSQL
 7. WebSocket event is broadcast to all clients
 8. All connected clients update instantly
-
 ---
+## 🏗 Architecture Overview
 
+Browser (Vue SPA)
+│
+│ HTTPS / WSS
+▼
+Nginx (SSL, Proxy)
+│
+├── Django REST API
+│ ├── JWT Auth
+│ ├── CAPTCHA
+│ └── Comments API
+│
+├── Django Channels (WebSockets)
+│ └── Redis
+│
+└── Celery Workers
+└── RabbitMQ
+---
 ## 🚀 Core Capabilities
 
 ### Backend
@@ -331,6 +356,27 @@ This design prevents anonymous file uploads and reduces spam risk.
 - Django Channels + Redis
 - WebSocket broadcast on new comment
 - No polling, no page reload
+
+---
+
+## Internationalization (i18n)
+
+The frontend UI is fully localized using **vue-i18n**.
+
+Supported languages:
+- English (EN)
+- Russian (RU)
+- Ukrainian (UK)
+- German (DE)
+
+All user-facing text is localized, including:
+- Buttons and labels
+- Tooltips and titles
+- Confirmation dialogs
+- Error and success messages
+- Dynamic UI elements (e.g. reply toggles)
+
+Language selection is persisted in `localStorage` and applied automatically on page reload.
 
 ---
 
