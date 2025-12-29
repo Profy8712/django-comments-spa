@@ -4,6 +4,7 @@
       <div class="auth-head">
         <div class="auth-left">
           <div class="auth-title">{{ $t("auth.title") }}</div>
+
           <button
             v-if="authed"
             type="button"
@@ -17,8 +18,9 @@
         </div>
 
         <div class="auth-right">
-            <LanguageSwitcher />
-<div class="auth-status" :class="{ on: authed }">
+          <LanguageSwitcher />
+
+          <div class="auth-status" :class="{ on: authed }">
             <span class="dot" :class="{ on: authed }" />
             <span class="status-text" :class="{ on: authed }">
               {{ authed ? $t("auth.authorized") : $t("auth.anonymous") }}
@@ -33,7 +35,9 @@
             @click="onLogout"
             :disabled="busy"
             :title="$t('auth.logout')"
-          >{{ $t("auth.logout") }}</button>
+          >
+            {{ $t("auth.logout") }}
+          </button>
         </div>
       </div>
 
@@ -80,7 +84,7 @@
           <div class="row">
             <button class="btn primary" :disabled="busy || authed" @click="onLogin" type="button">
               <span v-if="busy" class="spinner" aria-hidden="true"></span>
-              {{ busy ? ('auth.loggingIn') : ('auth.login') }}
+              {{ busy ? $t("auth.loggingIn") : $t("auth.login") }}
             </button>
 
             <button
@@ -88,15 +92,18 @@
               type="button"
               :disabled="!authed"
               @click="copyBearer"
-              :title="('auth.copyBearerTitle')"
-            >{{ ('auth.copyBearer') }}</button>
+              :title="$t('auth.copyBearerTitle')"
+            >
+              {{ $t("auth.copyBearer") }}
+            </button>
           </div>
 
           <div v-if="error" class="error">{{ error }}</div>
         </div>
 
         <div class="muted-note">
-          {{ ('auth.tokensNote') }} <code>localStorage</code>. {{ ('auth.updatesVia') }} <code>auth-changed</code> {{ ('auth.event') }}.
+          {{ $t("auth.tokensNote") }} <code>localStorage</code>. {{ $t("auth.updatesVia") }}
+          <code>auth-changed</code> {{ $t("auth.event") }}.
         </div>
       </div>
     </div>
@@ -168,7 +175,7 @@ export default {
       if (this.authed) return;
 
       if (!this.username || !this.password) {
-        this.error = "Enter username and password.";
+        this.error = this.$t("auth.enterCredentials");
         return;
       }
 
@@ -185,7 +192,7 @@ export default {
 
         this.$emit("auth-changed");
       } catch (e) {
-        this.error = e?.message || "Login failed.";
+        this.error = e?.message || this.$t("auth.loginFailed");
       } finally {
         this.busy = false;
       }
@@ -479,6 +486,8 @@ html[data-theme="light"] .spinner {
   border-top-color: rgba(15, 23, 42, 0.75);
 }
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

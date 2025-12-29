@@ -27,17 +27,17 @@
         </div>
 
         <div class="actions comment-actions">
-          <button type="button" class="btn-link" @click="toggleReply(c.id)">Reply</button>
+          <button type="button" class="btn-link" @click="toggleReply(c.id)">
+              {{ $t("comments.reply") }}
+            </button>
 
           <button
             v-if="isAdmin"
             class="btn-link btn-link-danger"
             type="button"
             @click.stop.prevent="onDelete(c.id)"
-            title="Delete comment"
-          >
-            Delete
-          </button>
+            :title="$t('comments.deleteTitle')"
+          >{{ $t("comments.delete") }}</button>
         </div>
       </div>
 
@@ -104,9 +104,9 @@
           type="button"
           class="btn-link more-replies"
           @click.stop="toggleExpand(c.id)"
-          title="More replies hidden"
+          :title="$t('comments.moreRepliesHidden')"
         >
-          {{ expandedIds.has(c.id) ? ("comments.hideReplies") : ("comments.viewMoreReplies") }}
+            {{ expandedIds.has(c.id) ? $t("comments.hideReplies") : $t("comments.viewMoreReplies") }}
         </button>
       </div>
   </div>

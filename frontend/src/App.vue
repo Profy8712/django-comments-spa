@@ -279,7 +279,7 @@ export default {
     async handleDelete(id) {
       try {
         if (!id) return;
-        if (!confirm("Delete this comment?")) return;
+        if (!confirm(this.$t("comments.deleteConfirm"))) return;
 
         await adminDeleteComment(id);
 
@@ -287,7 +287,7 @@ export default {
         await this.loadComments();
       } catch (e) {
         console.error("[handleDelete] failed:", e);
-        alert("Failed to delete comment");
+        alert(this.$t("comments.deleteFailed"));
       }
     },
 
