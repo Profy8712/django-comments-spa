@@ -61,7 +61,7 @@
       <div class="section-title">{{ $t("form.content") }}</div>
 
       <div class="form-group">
-        <div class="toolbar">
+        <div class="toolbar comment-toolbar">
           <div class="toolbar-left">
             <button
               class="tool"
@@ -132,7 +132,7 @@
         <textarea
           v-show="editorMode === 'write'"
           ref="textRef"
-          class="form-textarea"
+          class="form-textarea comment-textarea"
           :class="{ invalid: !!errors.text }"
           v-model="form.text"
           @keydown.enter.exact.prevent="onSubmit"
@@ -195,7 +195,7 @@
 
       <div class="form-group">
         <div
-          class="dropzone"
+          class="dropzone attachments-dropzone"
           :class="{ disabled: submitting || !hasJwt, over: dragOver }"
           @dragenter.prevent="onDragEnter"
           @dragover.prevent="onDragOver"
@@ -204,6 +204,7 @@
         >
           <div class="dz-top">
             <div class="dz-title">{{ $t("attachments.dropTitle") }}</div>
+            <div class="attachments-hint">Images: JPG, PNG, GIF (max 320×240). Text files: TXT (max 100 KB).</div>
             <div class="dz-sub">{{ $t("attachments.dropSub") }}</div>
           </div>
 
@@ -260,7 +261,7 @@
 
     <!-- Actions -->
     <div class="form-actions">
-      <button class="btn primary" type="submit" :disabled="submitting || !isValid">
+      <button class="btn primary comment-submit" type="submit" :disabled="submitting || !isValid">
         <span v-if="submitting" class="spinner" aria-hidden="true"></span>
         {{ submitting ? $t("form.sending") : $t("form.send") }}
       </button>

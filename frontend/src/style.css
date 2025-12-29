@@ -475,3 +475,62 @@ html:not([data-theme="light"]) .children {
   height: 30px;
 }
 
+
+/* ===============================
+   Comment form UI optimization
+   =============================== */
+
+.comment-form {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.comment-form .section {
+  margin-bottom: 16px;
+}
+
+/* Toolbar */
+.comment-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.comment-toolbar button {
+  padding: 4px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+/* Textarea */
+.comment-textarea {
+  min-height: 120px;
+  resize: vertical;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* Attachments */
+.attachments-dropzone {
+  padding: 12px;
+  min-height: 64px;
+  border-radius: 10px;
+}
+
+.attachments-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* Submit */
+.comment-submit {
+  padding: 10px 20px;
+  font-weight: 500;
+}
+
+.comment-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+

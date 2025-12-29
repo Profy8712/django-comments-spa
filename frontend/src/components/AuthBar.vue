@@ -87,14 +87,17 @@
               {{ busy ? $t("auth.loggingIn") : $t("auth.login") }}
             </button>
 
+
             <button
+              v-if="me && (me.is_staff || me.is_superuser)"
               class="btn ghost"
               type="button"
-              :disabled="!authed"
+              
               @click="copyBearer"
+
               :title="$t('auth.copyBearerTitle')"
             >
-              {{ $t("auth.copyBearer") }}
+              {{ $t('auth.copyBearer') }}
             </button>
           </div>
 
@@ -490,4 +493,17 @@ html[data-theme="light"] .spinner {
     transform: rotate(360deg);
   }
 }
+/* --- Fix: ensure auth action buttons are clickable (avoid overlay capture) --- */
+.row {
+  position: relative;
+  z-index: 9999;
+}
+
+.row .btn,
+.row button {
+  position: relative;
+  z-index: 9999;
+  pointer-events: auto;
+}
+
 </style>
