@@ -49,7 +49,7 @@
             v-model.trim="form.homepage"
             type="url"
             :disabled="submitting"
-            placeholder="https://example.com"
+            placeholder="https://homepage.example"
           />
           <p v-if="errors.homepage" class="error-text">{{ errors.homepage }}</p>
         </div>
