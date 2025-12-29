@@ -354,7 +354,7 @@ html[data-theme="light"] .attach-item {
   font-size: 0.95rem;
   color: var(--muted);
   padding: 8px 12px;
-  border-left: 3px solid rgba(37, 99, 235, 0.45);
+  border-left: 0.5px solid rgba(37, 99, 235, 0.28);
   border-radius: 10px;
   background: rgba(37, 99, 235, 0.04);
   margin-bottom: 10px;
@@ -365,7 +365,7 @@ html[data-theme="light"] .attach-item {
 .children {
   margin-top: 12px;
   padding-left: 16px;
-  border-left: 3px solid rgba(148, 163, 184, 0.45);
+  border-left: 0.5px solid rgba(148, 163, 184, 0.28);
 }
 
 .comment-item.is-child {
