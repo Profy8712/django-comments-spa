@@ -1,16 +1,19 @@
 <template>
   <form class="comment-form" @submit.prevent="onSubmit">
-
     <!-- Toast -->
     <div v-if="toast.show" class="toast" :class="toast.type" role="status" aria-live="polite">
       {{ toast.msg }}
     </div>
+
+    <!-- User info (anonymous only) -->
     <div v-if="!hasJwt" class="section">
-      <div class="section-title">User info</div>
+      <div class="section-title">{{ $t("form.userInfo") }}</div>
 
       <div class="grid3">
         <div class="form-group">
-          <label class="form-label">User Name <span class="req">*</span></label>
+          <label class="form-label">
+            {{ $t("form.userName") }} <span class="req">*</span>
+          </label>
           <input
             ref="userRef"
             class="form-input"
@@ -24,7 +27,9 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Email <span class="req">*</span></label>
+          <label class="form-label">
+            {{ $t("form.email") }} <span class="req">*</span>
+          </label>
           <input
             class="form-input"
             :class="{ invalid: !!errors.email }"
@@ -37,7 +42,7 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Home page</label>
+          <label class="form-label">{{ $t("form.homepage") }}</label>
           <input
             class="form-input"
             :class="{ invalid: !!errors.homepage }"
@@ -53,7 +58,7 @@
 
     <!-- Content -->
     <div class="section">
-      <div class="section-title">Content</div>
+      <div class="section-title">{{ $t("form.content") }}</div>
 
       <div class="form-group">
         <div class="toolbar">
@@ -63,7 +68,7 @@
               type="button"
               @click="insertTag('i')"
               :disabled="submitting"
-              title="Wrap selected text with [i][/i]"
+              :title="$t('form.tags.iTitle')"
             >
               [i]
             </button>
@@ -72,7 +77,7 @@
               type="button"
               @click="insertTag('strong')"
               :disabled="submitting"
-              title="Wrap selected text with [strong][/strong]"
+              :title="$t('form.tags.strongTitle')"
             >
               [strong]
             </button>
@@ -81,7 +86,7 @@
               type="button"
               @click="insertTag('code')"
               :disabled="submitting"
-              title="Wrap selected text with [code][/code]"
+              :title="$t('form.tags.codeTitle')"
             >
               [code]
             </button>
@@ -90,13 +95,13 @@
               type="button"
               @click="insertTag('a')"
               :disabled="submitting"
-              title="Wrap selected text with [a][/a] (URL only)"
+              :title="$t('form.tags.aTitle')"
             >
               [a]
             </button>
           </div>
 
-          <div class="tabs" role="tablist" aria-label="Editor mode">
+          <div class="tabs" role="tablist" :aria-label="$t('form.editorMode')">
             <button
               class="tab"
               type="button"
@@ -104,9 +109,9 @@
               :class="{ on: editorMode === 'write' }"
               @click="editorMode = 'write'"
               :disabled="submitting"
-              :aria-selected="(editorMode === 'write').toString()"
+              :aria-selected="String(editorMode === 'write')"
             >
-              Write
+              {{ $t("form.write") }}
             </button>
             <button
               class="tab"
@@ -115,27 +120,30 @@
               :class="{ on: editorMode === 'preview' }"
               @click="editorMode = 'preview'"
               :disabled="submitting"
-              :aria-selected="(editorMode === 'preview').toString()"
+              :aria-selected="String(editorMode === 'preview')"
             >
-              Preview
+              {{ $t("form.preview") }}
             </button>
           </div>
         </div>
 
-        <label class="sr-only">Text</label>
+        <label class="sr-only">{{ $t("form.text") }}</label>
+
         <textarea
           v-show="editorMode === 'write'"
           ref="textRef"
           class="form-textarea"
           :class="{ invalid: !!errors.text }"
-          v-model="form.text" @keydown.enter.exact.prevent="onSubmit" @keydown.enter.shift.exact.stop
+          v-model="form.text"
+          @keydown.enter.exact.prevent="onSubmit"
+          @keydown.enter.shift.exact.stop
           rows="7"
           :disabled="submitting"
-          placeholder="Write your comment... (allowed tags: [i] [strong] [code] [a])"
+          :placeholder="$t('form.placeholder')"
         />
 
         <div v-show="editorMode === 'preview'" class="preview-box">
-          <div v-if="!form.text.trim()" class="preview-empty">Nothing to preview yet.</div>
+          <div v-if="!form.text.trim()" class="preview-empty">{{ $t("form.previewEmpty") }}</div>
           <div v-else class="preview-content" v-html="previewHtml"></div>
           <div v-if="previewWarning" class="preview-warn">⚠ {{ previewWarning }}</div>
         </div>
@@ -144,22 +152,24 @@
       </div>
     </div>
 
-    <!-- Security -->
+    <!-- Security (anonymous only) -->
     <div v-if="!hasJwt" class="section">
-      <div class="section-title">Security</div>
+      <div class="section-title">{{ $t("form.security") }}</div>
 
       <div class="form-group">
-        <label class="form-label">CAPTCHA <span class="req">*</span></label>
+        <label class="form-label">
+          {{ $t("form.captcha") }} <span class="req">*</span>
+        </label>
 
         <div class="captcha-row">
-          <img v-if="captcha.image" class="captcha-image" :src="captcha.image" alt="CAPTCHA" />
+          <img v-if="captcha.image" class="captcha-image" :src="captcha.image" :alt="$t('form.captcha')" />
 
           <button
             class="captcha-reload"
             type="button"
             @click="loadCaptcha"
             :disabled="submitting || captchaLoading"
-            title="Reload CAPTCHA"
+            :title="$t('form.captchaReload')"
           >
             ⟳
           </button>
@@ -171,7 +181,7 @@
             type="text"
             autocomplete="off"
             :disabled="submitting"
-            placeholder="Enter text from image"
+            :placeholder="$t('form.captchaPlaceholder')"
           />
         </div>
 
@@ -179,9 +189,9 @@
       </div>
     </div>
 
-    <!-- Attachments -->
+    <!-- Attachments (JWT only) -->
     <div v-if="hasJwt" class="section">
-      <div class="section-title">Attachments</div>
+      <div class="section-title">{{ $t("attachments.title") }}</div>
 
       <div class="form-group">
         <div
@@ -193,8 +203,8 @@
           @drop.prevent="onDrop"
         >
           <div class="dz-top">
-            <div class="dz-title">Drag & drop files here</div>
-            <div class="dz-sub">or click to browse</div>
+            <div class="dz-title">{{ $t("attachments.dropTitle") }}</div>
+            <div class="dz-sub">{{ $t("attachments.dropSub") }}</div>
           </div>
 
           <button
@@ -202,9 +212,9 @@
             class="dz-btn"
             @click="browseFiles"
             :disabled="submitting || !hasJwt"
-            title="Choose files"
+            :title="$t('attachments.chooseTitle')"
           >
-            Choose files
+            {{ $t("attachments.chooseBtn") }}
           </button>
 
           <input
@@ -217,7 +227,8 @@
             :disabled="submitting || !hasJwt"
           />
         </div>
-        <div class="hint-text">Allowed: images (JPG/PNG/GIF/WEBP) and TXT (≤100 KB).</div>
+
+        <div class="hint-text">{{ $t("attachments.allowed") }}</div>
 
         <div v-if="hasJwt && selectedFiles.length" class="files-list">
           <div v-for="(f, idx) in selectedFiles" :key="idx" class="file-item">
@@ -229,14 +240,14 @@
                 <div class="file-name">{{ f.file.name }}</div>
                 <div class="file-sub">
                   <span class="file-size">{{ formatBytes(f.file.size) }}</span>
-                  <span v-if="isImageFile(f.file)" class="file-note">• Will be resized to 320×240</span>
+                  <span v-if="isImageFile(f.file)" class="file-note">• {{ $t("attachments.resizeNote") }}</span>
                 </div>
               </div>
             </div>
 
             <div class="file-right">
               <span v-if="f.error" class="file-error">{{ f.error }}</span>
-              <button class="file-remove" type="button" @click="removeFile(idx)" :disabled="submitting" title="Remove">
+              <button class="file-remove" type="button" @click="removeFile(idx)" :disabled="submitting" :title="$t('attachments.remove')">
                 ✕
               </button>
             </div>
@@ -251,17 +262,11 @@
     <div class="form-actions">
       <button class="btn primary" type="submit" :disabled="submitting || !isValid">
         <span v-if="submitting" class="spinner" aria-hidden="true"></span>
-        {{ submitting ? "Sending..." : "Send comment" }}
+        {{ submitting ? $t("form.sending") : $t("form.send") }}
       </button>
 
-      <button
-        class="btn ghost"
-        type="button"
-        @click="$emit('cancel')"
-        v-if="parentId !== null"
-        :disabled="submitting"
-      >
-        Cancel
+      <button class="btn ghost" type="button" @click="$emit('cancel')" v-if="parentId !== null" :disabled="submitting">
+        {{ $t("form.cancel") }}
       </button>
     </div>
 
@@ -290,13 +295,10 @@ export default {
       hasJwt: false,
 
       captcha: { key: "", image: "" },
-
-      // { file, error, previewUrl }
-      selectedFiles: [],
+      selectedFiles: [], // { file, error, previewUrl }
 
       errors: {},
 
-      // UX
       editorMode: "write", // write | preview
       previewWarning: "",
       dragOver: false,
@@ -317,9 +319,7 @@ export default {
 
   computed: {
     isValid() {
-      // minimal client-side validity for button disabling
       const hasText = !!this.form.text?.trim();
-
       if (!hasText) return false;
 
       if (!this.hasJwt) {
@@ -330,8 +330,6 @@ export default {
           !!this.form.captcha_value?.trim()
         );
       }
-
-      // JWT: user/email should be prefilled
       return true;
     },
 
@@ -362,6 +360,7 @@ export default {
 
   mounted() {
     this._onAuthChangedBound = () => this.onAuthChanged();
+
     this.syncAuth();
     this.prefillFromMe();
 
@@ -369,7 +368,6 @@ export default {
 
     window.addEventListener("auth-changed", this._onAuthChangedBound);
 
-    // autofocus
     this.focusFirst();
   },
 
@@ -380,9 +378,7 @@ export default {
   },
 
   methods: {
-    // ------------------------
     // Toast
-    // ------------------------
     showToast(type, msg) {
       this.toast = { show: true, type, msg };
       if (this._toastTimer) clearTimeout(this._toastTimer);
@@ -391,27 +387,19 @@ export default {
       }, 2200);
     },
 
-    // ------------------------
     // Focus
-    // ------------------------
     focusFirst() {
       this.$nextTick(() => {
-        if (!this.hasJwt) {
-          this.$refs.userRef?.focus?.();
-        } else {
-          this.$refs.textRef?.focus?.();
-        }
+        if (!this.hasJwt) this.$refs.userRef?.focus?.();
+        else this.$refs.textRef?.focus?.();
       });
     },
 
-    // ------------------------
     // Auth sync
-    // ------------------------
     syncAuth() {
       this.hasJwt = !!getAccessToken();
 
       if (this.hasJwt) {
-        // jwt => remove captcha fields
         this.form.captcha_key = "";
         this.form.captcha_value = "";
         this.captcha = { key: "", image: "" };
@@ -471,9 +459,7 @@ export default {
       this.focusFirst();
     },
 
-    // ------------------------
     // CAPTCHA
-    // ------------------------
     async loadCaptcha() {
       this.captchaLoading = true;
       try {
@@ -487,17 +473,13 @@ export default {
         this.form.captcha_key = key;
         this.form.captcha_value = "";
       } catch (e) {
-        this.errors.captcha_value = "Failed to load CAPTCHA.";
+        this.errors.captcha_value = this.$t("form.captchaLoadFail");
       } finally {
         this.captchaLoading = false;
       }
     },
 
-    // ------------------------
     // Tag insertion
-    // - cursor inside tag if no selection
-    // - keep selection wrapped if selection exists
-    // ------------------------
     insertTag(tag) {
       const el = this.$refs.textRef;
       if (!el) return;
@@ -517,12 +499,10 @@ export default {
       this.$nextTick(() => {
         el.focus();
 
-        // if no selection => put cursor inside
         if (start === end) {
           const pos = start + open.length;
           el.setSelectionRange(pos, pos);
         } else {
-          // keep selection highlighted inside tag
           const selStart = start + open.length;
           const selEnd = selStart + selected.length;
           el.setSelectionRange(selStart, selEnd);
@@ -530,9 +510,7 @@ export default {
       });
     },
 
-    // ------------------------
     // Attachments UI
-    // ------------------------
     browseFiles() {
       this.syncAuth();
       if (!this.hasJwt) return;
@@ -568,7 +546,6 @@ export default {
         this.clearFiles();
         return;
       }
-
       const files = Array.from(e?.target?.files || []);
       this.ingestFiles(files);
     },
@@ -578,7 +555,7 @@ export default {
 
       this.selectedFiles = (files || []).map((file) => {
         const err = this.validateFile(file);
-        const previewUrl = err ? null : (this.isImageFile(file) ? URL.createObjectURL(file) : null);
+        const previewUrl = err ? null : this.isImageFile(file) ? URL.createObjectURL(file) : null;
         return { file, error: err, previewUrl };
       });
     },
@@ -599,8 +576,8 @@ export default {
       const isTxt = name.endsWith(".txt");
       const isImg = this.isImageFile(file);
 
-      if (!isTxt && !isImg) return "Only images (JPG/PNG/GIF/WEBP) or TXT are allowed.";
-      if (isTxt && file.size > 100 * 1024) return "TXT must be <= 100 KB.";
+      if (!isTxt && !isImg) return this.$t("attachments.errType");
+      if (isTxt && file.size > 100 * 1024) return this.$t("attachments.errTxtSize");
       return null;
     },
 
@@ -632,9 +609,7 @@ export default {
       return `${val.toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
     },
 
-    // ------------------------
     // Preview renderer (safe)
-    // ------------------------
     escapeHtml(s) {
       return String(s)
         .replaceAll("&", "&amp;")
@@ -655,21 +630,18 @@ export default {
         const openCount = (text.match(new RegExp(`\\[${t}\\]`, "g")) || []).length;
         const closeCount = (text.match(new RegExp(`\\[\\/${t}\\]`, "g")) || []).length;
         if (openCount !== closeCount) {
-          warning = "Some tags look unclosed. Please check your markup.";
+          warning = this.$t("form.tagsUnclosed");
           break;
         }
       }
 
       let html = escaped;
 
-      html = html.replaceAll(/\[code\]([\s\S]*?)\[\/code\]/g, (_m, p1) => {
-        return `<pre class="p-code"><code>${p1}</code></pre>`;
-      });
+      html = html.replace(/\[code\]([\s\S]*?)\[\/code\]/g, (_m, p1) => `<pre class="p-code"><code>${p1}</code></pre>`);
+      html = html.replace(/\[strong\]([\s\S]*?)\[\/strong\]/g, "<strong>$1</strong>");
+      html = html.replace(/\[i\]([\s\S]*?)\[\/i\]/g, "<em>$1</em>");
 
-      html = html.replaceAll(/\[strong\]([\s\S]*?)\[\/strong\]/g, "<strong>$1</strong>");
-      html = html.replaceAll(/\[i\]([\s\S]*?)\[\/i\]/g, "<em>$1</em>");
-
-      html = html.replaceAll(/\[a\]([\s\S]*?)\[\/a\]/g, (_m, p1) => {
+      html = html.replace(/\[a\]([\s\S]*?)\[\/a\]/g, (_m, p1) => {
         const rawText = String(p1 || "").trim();
         const looksUrl = /^https?:\/\/[^\s]+$/i.test(rawText);
         if (looksUrl) {
@@ -679,13 +651,11 @@ export default {
         return `<span class="p-link p-link-disabled">${rawText}</span>`;
       });
 
-      html = html.replaceAll(/\n/g, "<br />");
+      html = html.replace(/\n/g, "<br />");
       return { html, warning };
     },
 
-    // ------------------------
     // Errors
-    // ------------------------
     mapApiErrors(err) {
       const payload = err?.payload;
       if (payload && typeof payload === "object") {
@@ -695,31 +665,27 @@ export default {
         }
         return out;
       }
-      return { non_field: "Request failed." };
+      return { non_field: this.$t("form.requestFailed") };
     },
 
-    // ------------------------
     // Submit
-    // ------------------------
     async onSubmit() {
       this.errors = {};
       this.syncAuth();
       this.prefillFromMe();
 
-      if (!this.form.text?.trim()) this.errors.text = "Text is required.";
+      if (!this.form.text?.trim()) this.errors.text = this.$t("form.errTextRequired");
 
-        if (!this.hasJwt) {
-          if (!this.form.user_name?.trim()) this.errors.user_name = "User Name is required.";
-          if (!this.form.email?.trim()) this.errors.email = "Email is required.";
-          if (!this.form.captcha_key || !this.form.captcha_value) {
-            this.errors.captcha_value = "CAPTCHA is required.";
-          }
-        } else {
-          // JWT: allow submit even if /me is not loaded yet (backend derives user info from token)
+      if (!this.hasJwt) {
+        if (!this.form.user_name?.trim()) this.errors.user_name = this.$t("form.errUserRequired");
+        if (!this.form.email?.trim()) this.errors.email = this.$t("form.errEmailRequired");
+        if (!this.form.captcha_key || !this.form.captcha_value) {
+          this.errors.captcha_value = this.$t("form.errCaptchaRequired");
         }
+      }
 
       if (Object.keys(this.errors).length) {
-        this.showToast("error", "Validation failed.");
+        this.showToast("error", this.$t("form.validationFailed"));
         return;
       }
 
@@ -734,15 +700,12 @@ export default {
         };
 
         const parentId = this.parentIdInternal;
- 
-          // JWT: do not send empty user_name/email (backend uses token)
-          if (this.hasJwt) {
-            if (!String(payload.user_name || "").trim()) delete payload.user_name;
-            if (!String(payload.email || "").trim()) delete payload.email;
-          }
 
-
-        if (!this.hasJwt) {
+        // JWT: do not send empty user_name/email (backend uses token)
+        if (this.hasJwt) {
+          if (!String(payload.user_name || "").trim()) delete payload.user_name;
+          if (!String(payload.email || "").trim()) delete payload.email;
+        } else {
           payload.captcha_key = this.form.captcha_key;
           payload.captcha_value = this.form.captcha_value;
         }
@@ -776,7 +739,7 @@ export default {
 
         if (!this.hasJwt) await this.loadCaptcha();
 
-        this.showToast("success", "Comment added.");
+        this.showToast("success", this.$t("form.commentAdded"));
         this.$emit("created", { created, parentId });
       } catch (err) {
         this.errors = this.mapApiErrors(err);
@@ -785,7 +748,7 @@ export default {
           await this.loadCaptcha();
         }
 
-        this.showToast("error", "Request failed.");
+        this.showToast("error", this.$t("form.requestFailed"));
       } finally {
         this.submitting = false;
       }
@@ -808,11 +771,10 @@ export default {
   border-radius: 16px;
   padding: 14px;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+
+  /* softer text */
+  color: var(--text-muted, #6b7280);
 }
-
-
-
-
 
 .toast {
   border-radius: 14px;
@@ -835,14 +797,17 @@ export default {
   border: 1px solid var(--border);
   background: var(--surface-2);
   border-radius: 16px;
-  padding: 12px;
+  padding: 14px;
 }
 
 .section-title {
   font-weight: 950;
   color: var(--text);
-  margin-bottom: 10px;
   letter-spacing: 0.2px;
+
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }
 
 .req {
@@ -853,7 +818,7 @@ export default {
 .grid3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 14px;
+  gap: 10px;
 }
 @media (max-width: 920px) {
   .grid3 {
@@ -870,6 +835,7 @@ export default {
 .form-label {
   font-weight: 900;
   color: var(--text);
+  margin-bottom: 6px;
 }
 
 .form-input,
@@ -878,7 +844,7 @@ export default {
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   font-size: 14px;
   outline: none;
 }
@@ -896,6 +862,7 @@ export default {
 
 .form-textarea {
   resize: vertical;
+  min-height: 130px;
 }
 
 .error-text {
@@ -904,10 +871,22 @@ export default {
   line-height: 1.25;
 }
 
-.hint-text,
-.hint-lock {
+.hint-text {
   color: var(--muted);
   font-size: 13px;
+}
+
+.comment-form .hint-text,
+.comment-form .error-text {
+  color: var(--muted);
+}
+.comment-form .error-text {
+  color: var(--danger, #ff5a78);
+}
+
+.comment-form input::placeholder,
+.comment-form textarea::placeholder {
+  color: rgba(148, 163, 184, 0.9);
 }
 
 /* Toolbar */
@@ -1037,7 +1016,9 @@ html[data-theme="light"] .p-link {
   border: 1px dashed rgba(96, 165, 250, 0.35);
   background: rgba(96, 165, 250, 0.08);
   border-radius: 16px;
-  padding: 14px;
+  padding: 12px 14px;
+  min-height: 72px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1067,10 +1048,13 @@ html[data-theme="light"] .dropzone {
 .dz-title {
   font-weight: 950;
   color: var(--text);
+  font-size: 14px;
+  line-height: 1.2;
 }
 
 .dz-sub {
-  font-size: 13px;
+  margin-top: 2px;
+  font-size: 12px;
   color: var(--muted);
 }
 
@@ -1078,7 +1062,7 @@ html[data-theme="light"] .dropzone {
   border: 1px solid rgba(96, 165, 250, 0.35);
   background: rgba(96, 165, 250, 0.14);
   border-radius: 14px;
-  padding: 10px 12px;
+  padding: 9px 14px;
   cursor: pointer;
   font-weight: 900;
   color: var(--text);
@@ -1161,7 +1145,6 @@ html[data-theme="light"] .dz-btn {
   white-space: nowrap;
   max-width: 520px;
 }
-
 @media (max-width: 760px) {
   .file-name {
     max-width: 240px;
@@ -1203,24 +1186,27 @@ html[data-theme="light"] .dz-btn {
 /* Captcha */
 .captcha-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .captcha-image {
-  height: 48px;
+  height: 42px;
   width: auto;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--input-bg);
 }
 
 .captcha-reload {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 12px;
+
   border: 1px solid rgba(96, 165, 250, 0.35);
   background: rgba(96, 165, 250, 0.10);
-  border-radius: 12px;
-  padding: 8px 10px;
   cursor: pointer;
   font-weight: 900;
   color: var(--text);
@@ -1232,6 +1218,9 @@ html[data-theme="light"] .dz-btn {
 .captcha-input {
   flex: 1;
   min-width: 220px;
+  height: 42px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 /* Actions */
@@ -1288,7 +1277,9 @@ html[data-theme="light"] .spinner {
   border-top-color: rgba(15, 23, 42, 0.75);
 }
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* a11y */
@@ -1303,145 +1294,4 @@ html[data-theme="light"] .spinner {
   white-space: nowrap;
   border: 0;
 }
-
-
-
-
-
-
-/* Softer text colors */
-.comment-form {
-  color: var(--text-muted, #6b7280);
-}
-
-.comment-form .form-label,
-.comment-form .hint-text,
-.comment-form .error-text {
-  color: var(--muted);
-}
-
-.comment-form .section-title {
-  color: var(--text);
-}
-
-.comment-form input::placeholder,
-.comment-form textarea::placeholder {
-  color: rgba(148, 163, 184, 0.9);
-}
-
-
-
-/* Section title divider for better hierarchy */
-.section-title {
-  padding-bottom: 10px;
-  margin-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
 </style>
-
-/* --- Compact mode (polish) --- */
-.section {
-  padding: 14px !important;
-}
-
-.section-title {
-  margin-bottom: 10px !important;
-}
-
-.grid3 {
-  gap: 10px !important;
-}
-
-.form-group {
-  margin-bottom: 0 !important;
-}
-
-.form-label {
-  margin-bottom: 6px !important;
-}
-
-.form-input,
-textarea.form-input,
-.textarea,
-.inp,
-textarea {
-  padding: 9px 12px !important;
-}
-
-textarea {
-  min-height: 130px !important;
-}
-
-/* Captcha row tighter */
-.captcha-row,
-.captcha-wrap,
-.security-row {
-  gap: 10px !important;
-}
-
-/* CAPTCHA compact */
-.captcha-img {
-  height: 42px !important;
-  width: auto !important;
-}
-
-.captcha-refresh,
-.captcha-btn {
-  width: 42px !important;
-  height: 42px !important;
-  padding: 0 !important;
-}
-
-.captcha-input {
-  height: 42px !important;
-}
-
-/* --- Compact CAPTCHA (polish) --- */
-.captcha-row {
-  align-items: center;
-  gap: 10px;
-}
-
-.captcha-image {
-  height: 42px;
-  width: auto;
-  border-radius: 10px;
-}
-
-.captcha-reload {
-  width: 42px;
-  height: 42px;
-  padding: 0;
-  border-radius: 12px;
-}
-
-.captcha-input {
-  height: 42px;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-/* --- Compact sections --- */
-.section { padding: 14px; }
-.section-title { margin-bottom: 10px; }
-
-/* --- Compact Attachments dropzone --- */
-.dropzone {
-  padding: 12px 14px;
-  min-height: 72px;
-}
-
-.dz-title {
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-.dz-sub {
-  margin-top: 2px;
-  font-size: 12px;
-}
-
-.dz-btn {
-  padding: 9px 14px;
-}
