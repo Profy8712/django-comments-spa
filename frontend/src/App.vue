@@ -1,5 +1,5 @@
 <template>
-  <div style="position:fixed;z-index:99999;right:12px;bottom:12px;padding:8px 10px;border:2px solid red;background:rgba(255,255,255,.9);font-weight:800">I18N TEST</div>
+  
 <div class="app">
     <header class="top">
       <div class="brand">
