@@ -3,7 +3,9 @@
     <div
       v-for="c in comments"
       :key="c.id"
-      class="comment-item" :id="`c-${c.id}`" :data-comment-id="c.id"
+      class="comment-item"
+      :id="'c-' + c.id"
+      :data-comment-id="c.id"
       :class="{
         'is-child': isChild,
         'is-highlight': highlightId === c.id
@@ -19,7 +21,7 @@
             <span class="muted dot">•</span>
             <span class="time muted">{{ formatDate(c.created_at || c.created || c.createdAt) }}</span>
           </div>
-          <div class="line2" >
+          <div class="line2">
             <span class="email muted">{{ c.email }}</span>
           </div>
         </div>
@@ -28,8 +30,8 @@
           <button type="button" class="btn-link" @click="toggleReply(c.id)">Reply</button>
 
           <button
-              v-if="isAdmin"
-              class="btn-link btn-link-danger"
+            v-if="isAdmin"
+            class="btn-link btn-link-danger"
             type="button"
             @click.stop.prevent="onDelete(c.id)"
             title="Delete comment"
@@ -44,11 +46,12 @@
         <div class="comment-text">{{ c.text }}</div>
 
         <!-- Attachments -->
-          <div v-if="c.attachments && c.attachments.length" class="attach">
+        <div v-if="c.attachments && c.attachments.length" class="attach">
           <template v-for="a in c.attachments" :key="a.id">
             <img
               v-if="isImage(a.file)"
-              class="attach-img" @click.stop="openLightboxImage(a.file, filenameFromUrl(a.file))"
+              class="attach-img"
+              @click.stop="openLightboxImage(a.file, filenameFromUrl(a.file))"
               :src="a.file"
               alt="attachment"
               loading="lazy"
@@ -62,14 +65,13 @@
             >
               {{ filenameFromUrl(a.file) }}
             </a>
-
           </template>
         </div>
       </div>
 
       <!-- Reply form -->
       <div v-if="replyOpenId === c.id" class="reply-form">
-        <div  class="reply-quote">
+        <div class="reply-quote">
           {{ shorten(c.text) }}
         </div>
 
@@ -84,32 +86,45 @@
       </div>
 
       <!-- Children -->
-      <div  class="children comment-children">
+      <div class="children comment-children">
         <CommentTree
+          v-if="depth < maxDepth"
           :comments="c.children"
           :isAdmin="isAdmin"
           :me="me"
           :reset-key="resetKey"
           :is-child="true"
+          :depth="depth + 1"
+          :max-depth="maxDepth"
           @changed="onChanged"
           @delete="onDelete"
         />
-      </div>
-    </div>
-  </div>
-    <Lightbox
-      v-model="lightboxOpen"
-      :src="lightboxSrc"
-      :alt="lightboxAlt"
-      :type="lightboxType"
-    />
 
+        <button
+          v-else
+          type="button"
+          class="btn-link more-replies"
+          @click.stop="toggleReply(c.id)"
+          title="More replies hidden"
+        >
+          View more replies
+        </button>
+      </div>
+  </div>
+
+    </div>
+
+  <Lightbox
+    v-model="lightboxOpen"
+    :src="lightboxSrc"
+    :alt="lightboxAlt"
+    :type="lightboxType"
+  />
 </template>
 
 <script>
 import CommentForm from "./CommentForm.vue";
 import Lightbox from "./Lightbox.vue";
-
 
 export default {
   name: "CommentTree",
@@ -120,7 +135,9 @@ export default {
     isAdmin: { type: Boolean, default: false },
     me: { type: Object, default: null },
     resetKey: { type: [String, Number], default: 0 },
-    isChild: { type: Boolean, default: false }
+    isChild: { type: Boolean, default: false },
+    depth: { type: Number, default: 0 },
+    maxDepth: { type: Number, default: 5 },
   },
 
   emits: ["changed", "delete"],
@@ -130,10 +147,11 @@ export default {
       lightboxOpen: false,
       lightboxAlt: "",
       lightboxType: "image",
+      lightboxSrc: "",
 
       replyOpenId: null,
       highlightId: null,
-      _hlTimer: null
+      _hlTimer: null,
     };
   },
 
@@ -219,8 +237,8 @@ export default {
         s.endsWith(".gif") ||
         s.endsWith(".webp")
       );
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -247,7 +265,7 @@ export default {
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
 }
 
-/* ✅ Forum header bar like screenshot #2 */
+/* ✅ Forum header bar */
 .comment-head {
   display: grid;
   grid-template-columns: 34px 1fr auto;
@@ -255,7 +273,7 @@ export default {
   align-items: center;
 
   padding: 10px 12px;
-  margin: -12px -14px 12px; /* stretch to edges of card */
+  margin: -12px -14px 12px;
   background: rgba(15, 23, 42, 0.03);
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 14px 14px 0 0;
@@ -360,42 +378,24 @@ html[data-theme="light"] .attach-item {
   line-height: 1.45;
 }
 
-/* ✅ Children: forum quote indentation + soft child background */
-/* Depth visuals (pure CSS) */
-
-/* Reduce horizontal drift on deep threads */
+/* Children */
 .children .children { padding-left: 12px; }
 .children .children .children { padding-left: 10px; }
 .children .children .children .children { padding-left: 8px; }
 
 .children {
-
   margin-top: 12px;
   padding-left: 16px;
   border-left: 0.5px solid rgba(148, 163, 184, 0.28);
 }
 
-
-/* Depth background hierarchy (no opacity) */
-.children .comment-item {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-.children .children .comment-item {
-  background: rgba(0, 0, 0, 0.03);
-}
-
-.children .children .children .comment-item {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.children .children .children .children .comment-item {
-  background: rgba(0, 0, 0, 0.05);
-}
-
+/* Depth background hierarchy */
+.children .comment-item { background: rgba(0, 0, 0, 0.02); }
+.children .children .comment-item { background: rgba(0, 0, 0, 0.03); }
+.children .children .children .comment-item { background: rgba(0, 0, 0, 0.04); }
+.children .children .children .children .comment-item { background: rgba(0, 0, 0, 0.05); }
 
 .comment-item.is-child {
-
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
@@ -406,6 +406,10 @@ html:not([data-theme="light"]) .comment-item.is-child {
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* highlight when navigated via #c-<id> */
-
+/* "View more replies" */
+.more-replies {
+  margin-top: 8px;
+  font-size: 0.92rem;
+  opacity: 0.9;
+}
 </style>
