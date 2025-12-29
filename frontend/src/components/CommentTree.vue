@@ -57,8 +57,7 @@
               loading="lazy"
             />
             <a
-              v-else
-              class="attach-item"
+          v-if="depth >= maxDepth && c.children && c.children.length"              class="attach-item"
               :href="a.file"
               target="_blank"
               rel="noreferrer"
@@ -88,7 +87,7 @@
       <!-- Children -->
       <div class="children comment-children">
         <CommentTree
-          v-if="depth < maxDepth"
+          v-if="depth < maxDepth || expandedIds.has(c.id)"
           :comments="c.children"
           :isAdmin="isAdmin"
           :me="me"
@@ -101,13 +100,13 @@
         />
 
         <button
-          v-else
+          v-if="depth >= maxDepth && c.children && c.children.length"
           type="button"
           class="btn-link more-replies"
-          @click.stop="toggleReply(c.id)"
+          @click.stop="toggleExpand(c.id)"
           title="More replies hidden"
         >
-          View more replies
+          {{ expandedIds.has(c.id) ? "Hide replies" : "View more replies" }}
         </button>
       </div>
   </div>
@@ -150,7 +149,8 @@ export default {
       lightboxSrc: "",
 
       replyOpenId: null,
-      highlightId: null,
+        expandedIds: new Set(),
+        highlightId: null,
       _hlTimer: null,
     };
   },
@@ -175,6 +175,18 @@ export default {
       }
       this.replyOpenId = this.replyOpenId === id ? null : id;
     },
+
+      toggleExpand(id) {
+        if (id === null || id === undefined) return;
+        if (this.expandedIds.has(id)) {
+          this.expandedIds.delete(id);
+        } else {
+          this.expandedIds.add(id);
+        }
+        this.expandedIds = new Set(this.expandedIds);
+      },
+
+
 
     onChanged(payload) {
       this.replyOpenId = null;
@@ -406,11 +418,11 @@ html:not([data-theme="light"]) .comment-item.is-child {
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* "View more replies" */
+/* "{{ expandedIds.has(c.id) ? "Hide replies" : "View more replies" }}" */
 .more-replies {
   margin-top: 8px;
   font-size: 0.92rem;
   opacity: 0.9;
 }
 </style>
-Жцп
+
