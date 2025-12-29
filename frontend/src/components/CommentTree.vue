@@ -288,7 +288,6 @@ html:not([data-theme="light"]) .comment-head {
 }
 
 .author { font-weight: 900; }
-.dot { opacity: 0.7; }
 .time { font-size: 0.9rem; }
 
 .line2 { margin-top: 2px; }
@@ -362,13 +361,41 @@ html[data-theme="light"] .attach-item {
 }
 
 /* ✅ Children: forum quote indentation + soft child background */
+/* Depth visuals (pure CSS) */
+
+/* Reduce horizontal drift on deep threads */
+.children .children { padding-left: 12px; }
+.children .children .children { padding-left: 10px; }
+.children .children .children .children { padding-left: 8px; }
+
 .children {
+
   margin-top: 12px;
   padding-left: 16px;
   border-left: 0.5px solid rgba(148, 163, 184, 0.28);
 }
 
+
+/* Depth background hierarchy (no opacity) */
+.children .comment-item {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.children .children .comment-item {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.children .children .children .comment-item {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.children .children .children .children .comment-item {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+
 .comment-item.is-child {
+
   margin-top: 10px;
   padding: 10px 12px;
   border-radius: 12px;
@@ -378,6 +405,7 @@ html[data-theme="light"] .attach-item {
 html:not([data-theme="light"]) .comment-item.is-child {
   background: rgba(255, 255, 255, 0.04);
 }
+
 /* highlight when navigated via #c-<id> */
 
 </style>
