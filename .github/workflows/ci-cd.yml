@@ -61,16 +61,21 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          # Preserve newlines in multiline private key (echo often breaks it)
+          # Preserve newlines in multiline private key
           printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
 
-      - name: Deploy to EC2
+      - name: Deploy to EC2 (safe, no down, no broken pipe)
         run: |
           set -e
-          ssh -o StrictHostKeyChecking=yes \
+          ssh \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=20 \
+            -o TCPKeepAlive=yes \
+            -o ConnectTimeout=20 \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
               set -e
               cd /home/ubuntu/django-comments-spa
@@ -78,20 +83,39 @@ jobs:
               git fetch --all
               git reset --hard origin/main
 
-              docker compose --env-file .env.prod -f docker-compose.prod.yml down --remove-orphans
-              docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --force-recreate
-              docker compose --env-file .env.prod -f docker-compose.prod.yml ps
+              # Run long deploy in background (prevents SSH broken pipe)
+              # Logs go to /home/ubuntu/django-comments-spa/deploy.log
+              nohup docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build \
+                > deploy.log 2>&1 &
+
+              echo "Deploy started in background. Tail logs: tail -n 200 deploy.log"
           EOF
 
-      - name: Healthcheck
+      - name: Healthcheck (wait until app is ready)
         run: |
           set -e
-          ssh -o StrictHostKeyChecking=yes \
+          ssh \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=20 \
+            -o TCPKeepAlive=yes \
+            -o ConnectTimeout=20 \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
               set -e
-              for i in {1..36}; do
-                curl -fs http://127.0.0.1:8080/api/comments/ && exit 0
+
+              # Wait for nginx -> backend to respond (200/401/403 are all "alive")
+              for i in {1..60}; do
+                code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/api/comments/ || true)
+                if [ "$code" = "200" ] || [ "$code" = "401" ] || [ "$code" = "403" ]; then
+                  echo "Healthcheck OK (HTTP $code)"
+                  exit 0
+                fi
                 sleep 5
               done
+
+              echo "Healthcheck failed. Last 200 lines of deploy.log:"
+              tail -n 200 /home/ubuntu/django-comments-spa/deploy.log || true
+              echo "Docker ps:"
+              docker compose --env-file .env.prod -f /home/ubuntu/django-comments-spa/docker-compose.prod.yml ps || true
               exit 1
           EOF
