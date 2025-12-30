@@ -1,5 +1,6 @@
 // frontend/src/api/accounts.js
-import { apiGet, getAccessToken } from "./index";
+import { apiGet } from "./index";
+import { getAccessToken } from "./auth";
 
 /**
  * GET /api/accounts/me/

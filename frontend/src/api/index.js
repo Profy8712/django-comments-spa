@@ -1,5 +1,7 @@
 // frontend/src/api/index.js
 
+import { getAccessToken, clearTokens } from "./auth";
+
 const API_URL =
   import.meta.env.VITE_API_URL ||
   `${window.location.protocol}//${window.location.host}`;
@@ -23,19 +25,6 @@ export function buildUrl(path) {
   const p = path.startsWith("/") ? path : `/${path}`;
   return `${API_URL}${p}`;
 }
-
-/** Token helpers */
-export function getAccessToken() {
-  const t = localStorage.getItem("access");
-  return t && t.trim() ? t.trim() : null;
-}
-
-export function clearTokens() {
-  localStorage.removeItem("access");
-  localStorage.removeItem("refresh");
-  window.dispatchEvent(new Event("auth-changed"));
-}
-
 /**
  * Low-level request helper:
  * - adds Authorization if token exists (and withAuth=true)

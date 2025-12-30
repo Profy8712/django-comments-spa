@@ -1,6 +1,7 @@
 // frontend/src/api/attachments.js
 
-import { apiPostForm, getAccessToken } from "./index";
+import { apiPostForm } from "./index";
+import { getAccessToken } from "./auth";
 
 export function uploadAttachment(commentId, file) {
   if (!commentId) throw new Error("commentId is required");

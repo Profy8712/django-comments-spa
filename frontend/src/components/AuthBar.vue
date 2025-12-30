@@ -88,17 +88,6 @@
             </button>
 
 
-            <button
-              v-if="me && (me.is_staff || me.is_superuser)"
-              class="btn ghost"
-              type="button"
-              
-              @click="copyBearer"
-
-              :title="$t('auth.copyBearerTitle')"
-            >
-              {{ $t('auth.copyBearer') }}
-            </button>
           </div>
 
           <div v-if="error" class="error">{{ error }}</div>
@@ -218,22 +207,6 @@ export default {
       this.focusFirst();
     },
 
-    async copyBearer() {
-      const t = getAccessToken();
-      if (!t) return;
-
-      const text = `Bearer ${t}`;
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (_) {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
-    },
   },
 };
 </script>
