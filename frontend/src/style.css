@@ -560,3 +560,52 @@ html:not([data-theme="light"]) .children {
   font-size: 13px;
 }
 
+
+/* --- Telegram-like composer for CommentForm --- */
+.comment-form .composer {
+  position: sticky;
+  bottom: 12px;
+  z-index: 60;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-2, var(--card, rgba(255,255,255,0.03)));
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
+}
+
+/* Actions row: compact, send on the right */
+.comment-form .composer .form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 0;
+}
+
+/* Primary send button: more "chat" sized */
+.comment-form .composer .btn.primary {
+  padding: 10px 16px;
+  border-radius: 999px;
+  min-height: 40px;
+}
+
+/* Secondary cancel: smaller */
+.comment-form .composer .btn.ghost {
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+
+/* Tighten bottom spacing */
+.comment-form .composer + .error-text {
+  margin-top: 8px;
+}
+
+
+/* Hide send text on small screens (Telegram-like) */
+@media (max-width: 520px) {
+  .comment-form .send-text { display: none; }
+}
+
+
+

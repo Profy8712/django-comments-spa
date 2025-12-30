@@ -44,6 +44,7 @@ const messages = {
       write: "Write",
       preview: "Preview",
       send: "Send comment",
+      sendShort: "Send",
       placeholder:
         "Write your comment... (allowed tags: [i] [strong] [code] [a])",
     },
@@ -119,6 +120,7 @@ const messages = {
       write: "Написать",
       preview: "Просмотр",
       send: "Отправить комментарий",
+      sendShort: "Отправить",
       placeholder:
         "Введите комментарий... (разрешённые теги: [i] [strong] [code] [a])",
     },
@@ -192,6 +194,7 @@ const messages = {
       write: "Написати",
       preview: "Перегляд",
       send: "Надіслати коментар",
+      sendShort: "Надіслати",
       placeholder:
         "Напишіть коментар... (дозволені теги: [i] [strong] [code] [a])",
     },
@@ -265,6 +268,7 @@ const messages = {
       write: "Schreiben",
       preview: "Vorschau",
       send: "Kommentar senden",
+      sendShort: "Senden",
       placeholder:
         "Schreibe deinen Kommentar... (erlaubte Tags: [i] [strong] [code] [a])",
     },

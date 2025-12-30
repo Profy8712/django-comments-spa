@@ -259,19 +259,22 @@
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="form-actions">
-      <button class="btn primary comment-submit" type="submit" :disabled="submitting || !isValid">
-        <span v-if="submitting" class="spinner" aria-hidden="true"></span>
-        {{ submitting ? $t("form.sending") : $t("form.send") }}
-      </button>
+      <!-- Actions -->
+      <div class="composer">
+        <div class="form-actions">
+      <button class="btn primary comment-submit" type="submit" :disabled="submitting || !isValid" :title="$t('form.send')">
+          <span v-if="submitting" class="spinner" aria-hidden="true"></span>
+          <span v-else aria-hidden="true">▶</span>
+          <span class="send-text">{{ $t("form.sendShort") }}</span>
+        </button>
 
       <button class="btn ghost" type="button" @click="$emit('cancel')" v-if="parentId !== null" :disabled="submitting">
         {{ $t("form.cancel") }}
       </button>
-    </div>
+        </div>
+      </div>
 
-    <p v-if="errors.non_field" class="error-text">{{ errors.non_field }}</p>
+      <p v-if="errors.non_field" class="error-text">{{ errors.non_field }}</p>
   </form>
 </template>
 
