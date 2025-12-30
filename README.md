@@ -46,22 +46,25 @@ The focus is on **architecture, correctness, and deployment**, not just CRUD.
 
 ## 🏗 Architecture Overview
 
-Browser (Vue SPA)
+```text
+Browser (Vue 3 SPA)
 │
 │ HTTPS / WSS
 ▼
-Nginx (SSL, Proxy)
+Nginx (Reverse Proxy, SSL)
 │
 ├── Django REST API
-│ ├── JWT Auth
-│ ├── CAPTCHA
-│ └── Comments API
+│   ├── JWT Authentication
+│   ├── CAPTCHA validation
+│   ├── Accounts / Comments API
+│   └── PostgreSQL
 │
 ├── Django Channels (WebSockets)
-│ └── Redis
+│   └── Redis
 │
 └── Celery Workers
-└── RabbitMQ
+    └── RabbitMQ
+```
 
 ---
 
