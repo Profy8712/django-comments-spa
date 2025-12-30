@@ -4,8 +4,6 @@ and **real‑time updates**.
 
 The project demonstrates **backend‑first architecture** with a modern SPA frontend and realistic Docker‑based deployment.
 
-
-
 ## ⚡ TL;DR
 
 - Full-stack production-style comments system
@@ -13,6 +11,8 @@ The project demonstrates **backend‑first architecture** with a modern SPA fron
 - Vue 3 SPA with real-time updates
 - JWT auth + CAPTCHA hybrid security
 - Dockerized, deployed on AWS EC2 with HTTPS
+
+---
 
 ## 🎯 Project Purpose
 This project was created as a **backend‑oriented test assignment / portfolio project**.
@@ -41,7 +41,9 @@ The focus is on **architecture, correctness, and deployment**, not just CRUD.
 6. Comment is saved to PostgreSQL
 7. WebSocket event is broadcast to all clients
 8. All connected clients update instantly
+
 ---
+
 ## 🏗 Architecture Overview
 
 Browser (Vue SPA)
@@ -111,6 +113,7 @@ JWT tokens are stored in `localStorage` intentionally for SPA simplicity.
 HttpOnly cookies can be used as an alternative in other setups.
 
 ---
+
 ## 🛡 Admin & Moderation Features
 
 The system supports an **administrator role** with elevated permissions.
@@ -140,9 +143,8 @@ and reflected in the frontend UI.
 
 Unauthorized access returns **403 Forbidden**.
 
-
-
 ---
+
 ## 📁 Project Structure
 
 django_comments_spa/
@@ -157,6 +159,7 @@ django_comments_spa/
 └── README.md
 
 ---
+
 ## 🧵 Nested Comments
 
 - `parent` ForeignKey (adjacency list)
@@ -254,8 +257,6 @@ http://localhost:15672
 login: guest  
 password: guest  
 
----
-
 ### Run Locally with Search (Elasticsearch + Kibana)
 
 Search services are optional and started via Docker Compose profile `search`.
@@ -274,8 +275,6 @@ http://localhost:9200
 
 Kibana:  
 http://localhost:5601  
-
----
 
 ### Notes
 
@@ -318,8 +317,6 @@ The application is available via a public domain name.
 ```text
 https://comments-spa-t.duckdns.org/
 ```
-
----
 
 ### Backend API
 
@@ -424,8 +421,6 @@ CI runs on every **push** and **pull request** to `main` and includes:
 - Frontend build:
   - `npm run build`
 
----
-
 ### 🚚 CD (Continuous Deployment)
 
 CD runs on **push to `main`** (after CI succeeds) and performs the following steps:
@@ -448,7 +443,6 @@ Deployment is executed by:
 🔐 Required GitHub Secrets
 
 Add these secrets in:
-
 GitHub Repo → Settings → Secrets and variables → Actions
 
 EC2_HOST         # Public IP or domain of EC2
@@ -466,6 +460,7 @@ https://comments-spa-t.duckdns.org/api/comments/captcha/
 You can check pipeline runs in:
 GitHub → Actions
 
+---
 
 ## 📊 Database Schema
 
@@ -499,8 +494,6 @@ This documentation can be used for:
 - automated testing
 - API validation and versioning
 - interactive API exploration and debugging
-
----
 
 ### 🔗 Documentation Endpoints
 
