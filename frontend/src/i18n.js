@@ -16,7 +16,6 @@ const messages = {
       enterCredentials: "Enter username and password.",
       loginFailed: "Login failed.",
       loggingIn: "Logging in...",
-      copyBearerTitle: "Copy Authorization: Bearer <token>",
       tokensNote: "Tokens are stored in",
       updatesVia: "UI updates via",
       event: "event",
@@ -45,10 +44,34 @@ const messages = {
       preview: "Preview",
       send: "Send comment",
       sendShort: "Send",
+
+      text: "Message",
+      previewEmpty: "Nothing to preview",
+      editorMode: "Editor mode",
+      captchaReload: "Reload CAPTCHA",
+      captchaPlaceholder: "Enter CAPTCHA",
+
+      tags: {
+        iTitle: "Italic",
+        strongTitle: "Bold",
+        codeTitle: "Code",
+        aTitle: "Link",
+      },
+
+      captchaLoadFail: "Failed to load CAPTCHA. Please reload.",
+      tagsUnclosed: "Please make sure all tags are properly closed.",
+      requestFailed: "Request failed. Please try again.",
+      errTextRequired: "Text is required.",
+      errUserRequired: "User name is required.",
+      errEmailRequired: "E-mail is required.",
+      errCaptchaRequired: "CAPTCHA is required.",
+      validationFailed: "Validation failed.",
+      commentAdded: "Comment added.",
       placeholder:
         "Write your comment... (allowed tags: [i] [strong] [code] [a])",
     },
     attachments: {
+      chooseTitle: "Choose file",
       title: "Attachments",
       dropTitle: "Drag & drop files here",
       dropSub: "or click to browse",
@@ -76,7 +99,6 @@ const messages = {
       loading: "Loading...",
       cancel: "Cancel",
       close: "Close",
-      copyBearer: "Copy Bearer",
     },
   },
 
@@ -92,7 +114,6 @@ const messages = {
       enterCredentials: "Введите логин и пароль.",
       loginFailed: "Не удалось войти.",
       loggingIn: "Входим...",
-      copyBearerTitle: "Скопировать Authorization: Bearer <token>",
       tokensNote: "Токены хранятся в",
       updatesVia: "Интерфейс обновляется через",
       event: "событие",
@@ -152,7 +173,6 @@ const messages = {
       loading: "Загрузка...",
       cancel: "Отмена",
       close: "Закрыть",
-      copyBearer: "Копировать Bearer",
     },
   },
 
@@ -166,7 +186,6 @@ const messages = {
     },
     auth: {
       loggingIn: "Входимо...",
-      copyBearerTitle: "Скопіювати Authorization: Bearer <token>",
       tokensNote: "Токени зберігаються в",
       updatesVia: "Інтерфейс оновлюється через",
       event: "подію",
@@ -226,7 +245,6 @@ const messages = {
       loading: "Завантаження...",
       cancel: "Скасувати",
       close: "Закрити",
-      copyBearer: "Скопіювати Bearer",
     },
   },
 
@@ -240,7 +258,6 @@ const messages = {
     },
     auth: {
       loggingIn: "Anmelden...",
-      copyBearerTitle: "Authorization: Bearer <token> kopieren",
       tokensNote: "Tokens werden gespeichert in",
       updatesVia: "UI aktualisiert sich über",
       event: "Event",
@@ -300,7 +317,6 @@ const messages = {
       loading: "Lädt...",
       cancel: "Abbrechen",
       close: "Schließen",
-      copyBearer: "Bearer kopieren",
     },
   },
 };
@@ -323,13 +339,12 @@ function detectLang() {
 }
 
 export const i18n = createI18n({
+  fallbackLocale: "en",
   legacy: false,
   globalInjection: true,
-  locale: detectLang(),
-  fallbackLocale: "en",
+  locale: (localStorage.getItem("lang") || "en").toLowerCase().split("-")[0],
   messages,
 });
-
 export function setLang(lang) {
   const v = normalizeLang(lang) || "en";
   i18n.global.locale.value = v;
