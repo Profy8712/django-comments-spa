@@ -384,10 +384,10 @@ Language selection is persisted in `localStorage` and applied automatically on p
 
 ### Requirements
 
-- Docker
-- Docker Compose
+- Docker  
+- Docker Compose  
 
-### Run Locally
+### Run Locally (default stack)
 
 ```bash
 docker compose up -d --build
@@ -395,35 +395,57 @@ docker compose up -d --build
 
 Local stack includes:
 
-- backend
-- frontend
-- postgres
-- redis
-- rabbitmq
-- celery
-- celery_beat
-- elasticsearch
-- kibana
+- backend  
+- frontend  
+- postgres  
+- redis  
+- rabbitmq  
+- celery  
+- celery_beat  
 
 Frontend:  
-http://localhost:5173
+http://localhost:5173  
 
 Backend API:  
-http://localhost:8000/api/
+http://localhost:8000/api/  
 
-Django admin:
-http://localhost:8000/admin/
+Django admin:  
+http://localhost:8000/admin/  
 
-RabbitMQ UI:
-http://localhost:15672
-login guest, password guest
+RabbitMQ UI:  
+http://localhost:15672  
+login: guest  
+password: guest  
 
-Elasticsearch:
-http://localhost:9200
-
-Kibana:
-http://localhost:5601
 ---
+
+### Run Locally with Search (Elasticsearch + Kibana)
+
+Search services are optional and started via Docker Compose profile `search`.
+
+```bash
+docker compose --profile search up -d --build
+```
+
+Local stack additionally includes:
+
+- elasticsearch  
+- kibana  
+
+Elasticsearch:  
+http://localhost:9200  
+
+Kibana:  
+http://localhost:5601  
+
+---
+
+### Notes
+
+- Elasticsearch and Kibana are not started by default
+- Search functionality is disabled unless the `search` profile is enabled
+- This setup reduces resource usage and speeds up local development
+- Recommended for CI and low-resource environments
 
 ## ☁️ AWS EC2 Deployment (Production-Style)
 
