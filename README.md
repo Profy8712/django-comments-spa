@@ -148,15 +148,68 @@ Unauthorized access returns **403 Forbidden**.
 ## 📁 Project Structure
 
 django_comments_spa/
-├── accounts/          # Authentication, JWT, /me
-├── comments/          # Comments domain logic
-├── core/              # Settings, ASGI, Celery
-├── frontend/          # Vue 3 SPA
-├── nginx/             # Nginx config
-├── docker-compose.yml
-├── docker-compose.prod.yml
-├── Dockerfile.backend
-└── README.md
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml              # CI (tests/build) + CD (deploy to EC2)
+│
+├── accounts/                      # Auth domain (JWT, /me, user info)
+│   ├── migrations/
+│   ├── admin.py
+│   ├── models.py
+│   ├── serializers.py
+│   ├── urls.py
+│   └── views.py
+│
+├── comments/                      # Comments domain (tree, uploads, WS, tasks)
+│   ├── migrations/
+│   ├── admin.py
+│   ├── consumers.py               # Django Channels (WebSocket)
+│   ├── permissions.py             # Custom permissions (admin delete, etc.)
+│   ├── routing.py                 # WS routes
+│   ├── serializers.py
+│   ├── tasks.py                   # Celery tasks (async processing)
+│   ├── urls.py
+│   └── views.py
+│
+├── core/                          # Project core (settings, ASGI/WSGI, Celery init)
+│   ├── settings/
+│   │   ├── base.py
+│   │   ├── local.py
+│   │   └── production.py
+│   ├── asgi.py                    # ASGI app (API + WebSockets)
+│   ├── wsgi.py                    # WSGI app (classic HTTP)
+│   ├── celery.py                  # Celery app configuration
+│   └── urls.py
+│
+├── frontend/                      # Vue 3 + Vite SPA
+│   ├── public/
+│   ├── src/
+│   │   ├── api/                   # HTTP client wrappers (comments/accounts)
+│   │   ├── components/            # UI components (AuthBar, CommentForm, Tree)
+│   │   ├── helpers/
+│   │   ├── i18n/                  # translations
+│   │   ├── App.vue
+│   │   └── main.js
+│   ├── vite.config.js
+│   └── package.json
+│
+├── nginx/
+│   ├── Dockerfile
+│   └── nginx.conf                 # reverse proxy + static/media + WS upgrade
+│
+├── media/                         # Uploaded files (runtime)
+├── staticfiles/                   # Django collectstatic output (runtime)
+│
+├── docker-compose.yml             # Local dev stack
+├── docker-compose.prod.yml        # Production stack (server)
+├── Dockerfile.backend             # Backend image build
+│
+├── .env.local                     # Local environment variables
+├── .env.prod                      # Production environment variables
+├── env.example                    # Example env template
+│
+└── manage.py                      # Django entrypoint
+
 
 ---
 
