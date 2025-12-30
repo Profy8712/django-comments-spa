@@ -1,4 +1,10 @@
-# 🌟 Django Comments SPA — Production‑Style Backend Project
+# 🌟 Django Comments SPA 
+Production‑ready comments system with **nested threads**, **JWT authentication**, **CAPTCHA protection**, 
+and **real‑time updates**.
+
+The project demonstrates **backend‑first architecture** with a modern SPA frontend and realistic Docker‑based deployment.
+
+
 
 ## ⚡ TL;DR
 
@@ -8,23 +14,18 @@
 - JWT auth + CAPTCHA hybrid security
 - Dockerized, deployed on AWS EC2 with HTTPS
 
-A **production‑style Single Page Application (SPA)** for managing **hierarchical comments**, built with a strong focus on **backend architecture**, **security**, **scalability**, and **real‑world deployment practices**.
-
-This project demonstrates  Django backend solution** combined with a modern SPA frontend and a realistic Docker‑based deployment on AWS EC2.
-
----
-
 ## 🎯 Project Purpose
+This project was created as a **backend‑oriented test assignment / portfolio project**.
 
-The goal of this project is to demonstrate how a **real‑world comments system** can be:
+The goal is to demonstrate how a real‑world comments system can be:
 
-- Architected backend‑first
-- Protected from spam and XSS
-- Scaled with async workers and message brokers
-- Updated in real‑time via WebSockets
-- Deployed to a real server environment
+- properly structured on the backend
+- protected from spam and XSS
+- extended with asynchronous workers
+- updated in real time
+- deployed to a real server using Docker
 
-The project intentionally goes beyond simple CRUD to show **production thinking**.
+The focus is on **architecture, correctness, and deployment**, not just CRUD.
 
 ---
 
@@ -59,7 +60,9 @@ Nginx (SSL, Proxy)
 │
 └── Celery Workers
 └── RabbitMQ
+
 ---
+
 ## 🚀 Core Capabilities
 
 ### Backend
@@ -89,236 +92,71 @@ Nginx (SSL, Proxy)
 
 ---
 
-## 🔐 Authentication & Security
-## 🔁 Hybrid Security Model
-| User Type | Authentication | CAPTCHA |
-|----------|----------------|---------|
+## Authentication & Security
+
+### Hybrid Security Model
+
+| User type | JWT | CAPTCHA |
+|---------|-----|---------|
 | Anonymous | ❌ | ✅ |
-| Authorized | JWT | ❌ |
+| Authorized | ✅ | ❌ |
 
-Why:
+**Why this approach:**
 
-- CAPTCHA protects from bots
-- JWT gives smooth UX
-- Stateless & scalable
+- CAPTCHA protects from bots and spam
+- JWT provides smooth UX for registered users
+- Stateless authentication scales well
 
----
-## 🧠 JWT Authentication Concept
-
-This project uses **JWT (JSON Web Tokens)** to authenticate users
-and protect sensitive API endpoints.
-
-JWT is implemented using **Django REST Framework SimpleJWT** and is
-designed for a **SPA + API architecture**.
-
-### Why JWT?
-
-- Stateless authentication
-- No server-side sessions
-- Scales well for distributed systems
-- Ideal for Vue SPA + Django REST API
-
----
-
-## 🔑 Authentication Endpoints
-
-### Obtain JWT Tokens
-
-```http
-POST /api/auth/token/
-```
-Request:
-
-{
-  "username": "user",
-  "password": "User12345!"
-}
-
-
-Response:
-
-{
-  "refresh": "<refresh_token>",
-  "access": "<access_token>"
-}
-
-
-access — used for authenticated API requests
-
-refresh — used to renew access token
-
-Refresh Access Token
-POST /api/auth/token/refresh/
-
-
-Request:
-
-{
-  "refresh": "<refresh_token>"
-}
-
-
-Response:
-
-{
-  "access": "<new_access_token>"
-}
-
-🧪 How JWT Is Used in This Project
-✅ Primary method (UI)
-
-JWT authentication is handled via the Login form in the frontend UI:
-User enters username and password
-Backend returns JWT tokens
-Tokens are stored in localStorage
-Frontend automatically attaches:
-Authorization: Bearer <access_token>
-to protected API requests.
-
-No manual token handling is required.
----
-## 🔍 How to Verify JWT Usage
-
-### Browser (DevTools)
-
-1. Open **DevTools → Network**
-2. Create a comment as an authenticated user
-3. Open request:  
-   `POST /api/comments/`
-4. Verify request headers:
-
-```http
-Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
-```
-This confirms that:
-
-JWT access token is attached automatically
-
-protected endpoints are accessed correctly
-
-frontend ↔ backend authentication works as expected
-
-🛡 Protected Endpoints Overview
-Endpoint	Access
-GET /api/comments/	Public
-POST /api/comments/	Anonymous + CAPTCHA or JWT
-POST /api/comments/<id>/upload/	JWT only
-DELETE /api/comments/<id>/	Admin only
-GET /api/search/comments/	Public
+JWT tokens are stored in `localStorage` intentionally for SPA simplicity.
+HttpOnly cookies can be used as an alternative in other setups.
 
 ---
 ## 🛡 Admin & Moderation Features
 
-The system includes a dedicated **administrator role** with elevated permissions.
+The system supports an **administrator role** with elevated permissions.
 
 ### Admin capabilities
 
 - Delete any comment (including nested replies)
 - Moderate user-generated content
-- Perform actions without CAPTCHA
+- Bypass CAPTCHA
 - Visible **ADMIN badge** in the UI
 
-### Admin authentication
+### Admin identification
 
 Admin users are standard Django users with:
 
 - `is_staff = true`
 - `is_superuser = true`
 
-Admin status is determined via the `/api/accounts/me/` endpoint
+Admin status is resolved via the `/api/accounts/me/` endpoint
 and reflected in the frontend UI.
 
 ### Admin-only endpoint
 
 | Endpoint | Method | Access |
-|-------|--------|-------|
+|---|---|---|
 | `/api/comments/admin/comments/<id>/` | DELETE | Admin only |
 
 Unauthorized access returns **403 Forbidden**.
 
 
-## 🧩 JWT Configuration (settings.py)
-
-```python
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-    ),
-}
-```
-
-```python
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "AUTH_HEADER_TYPES": ("Bearer",),
-}
-```
-
-
-
-## 📁 Project Structure
-
-```
-## 📁 Project Structure
-
-```text
-django_comments_spa/
-├── accounts/                 # Authentication, JWT, /me endpoint
-│   ├── serializers.py
-│   ├── urls.py
-│   └── views.py
-│
-├── comments/                 # Comments domain logic
-│   ├── models.py             # Comment & Attachment models
-│   ├── serializers.py
-│   ├── views.py              # Public & admin APIs
-│   ├── permissions.py        # Admin permissions
-│   ├── urls.py
-│   └── validators.py
-│
-├── core/
-│   ├── settings/
-│   │   ├── base.py           # Shared settings
-│   │   ├── local.py          # Local development
-│   │   └── production.py     # AWS production
-│   │
-│   ├── asgi.py               # ASGI (Channels)
-│   ├── wsgi.py
-│   ├── celery.py
-│   └── urls.py
-│
-├── frontend/                 # Vue 3 SPA
-│   ├── src/
-│   │   ├── api/              # API clients
-│   │   ├── components/
-│   │   ├── helpers/
-│   │   ├── App.vue
-│   │   └── main.js
-│   ├── dist/                 # Production build
-│   └── Dockerfile
-│
-├── nginx/                    # Docker Nginx config
-│   ├── Dockerfile
-│   └── nginx.conf
-│
-├── media/                    # Uploaded files
-├── staticfiles/              # Collected static files
-│
-├── docker-compose.yml        # Local stack
-├── docker-compose.prod.yml   # Production stack
-├── Dockerfile.backend
-│
-├── manage.py
-├── requirements.txt
-├── README.md
-├── .env.local
-└── .env.prod
-
-```
 
 ---
+## 📁 Project Structure
 
+django_comments_spa/
+├── accounts/          # Authentication, JWT, /me
+├── comments/          # Comments domain logic
+├── core/              # Settings, ASGI, Celery
+├── frontend/          # Vue 3 SPA
+├── nginx/             # Nginx config
+├── docker-compose.yml
+├── docker-compose.prod.yml
+├── Dockerfile.backend
+└── README.md
+
+---
 ## 🧵 Nested Comments
 
 - `parent` ForeignKey (adjacency list)
@@ -392,7 +230,6 @@ Language selection is persisted in `localStorage` and applied automatically on p
 ```bash
 docker compose up -d --build
 ```
-
 Local stack includes:
 
 - backend  
@@ -447,6 +284,8 @@ http://localhost:5601
 - This setup reduces resource usage and speeds up local development
 - Recommended for CI and low-resource environments
 
+---
+
 ## ☁️ AWS EC2 Deployment (Production-Style)
 
 ### Environment
@@ -456,8 +295,6 @@ http://localhost:5601
 - Nginx as reverse proxy
 - HTTPS (Let’s Encrypt)
 - Public domain name (DuckDNS)
-
----
 
 ### Deployment Overview
 
@@ -470,19 +307,11 @@ The application is deployed on a **public AWS EC2 instance** using a
 - Backend API is proxied through Nginx
 - WebSocket connections are supported over **WSS**
 
-This setup reflects a **realistic production environment** suitable for:
-- backend test assignments
-- portfolio projects
-- internal tools
-- small to medium workloads
-
 ---
 
 ## 🌐 Public Access
 
 The application is available via a public domain name.
-
----
 
 ### Frontend (SPA)
 
@@ -498,8 +327,6 @@ https://comments-spa-t.duckdns.org/
 https://comments-spa-t.duckdns.org/api/
 ```
 
----
-
 ### Comments API
 
 Public endpoint for listing and creating comments.
@@ -513,24 +340,17 @@ https://comments-spa-t.duckdns.org/api/comments/
   - anonymous users → **CAPTCHA required**
   - authenticated users → **JWT**, no CAPTCHA
 
----
-
 ### CAPTCHA Endpoint
 
 ```text
 https://comments-spa-t.duckdns.org/captcha/
 ```
 
----
-
 ### WebSocket Endpoint
 
 ```text
 wss://comments-spa-t.duckdns.org/ws/comments/
 ```
-
----
-
 ### JWT Authentication Endpoint
 
 Used to obtain **access** and **refresh** tokens.
@@ -542,8 +362,8 @@ POST https://comments-spa-t.duckdns.org/api/auth/token/
 **Request body (JSON):**
 ```json
 {
-  "username": "user",
-  "password": "User12345!"
+  "username": "<username>",
+  "password": "<password>"
 }
 ```
 
@@ -554,29 +374,21 @@ POST https://comments-spa-t.duckdns.org/api/auth/token/
   "refresh": "<JWT refresh token>"
 }
 ```
+### 🧰 JWT via API (optional)
 
+JWT tokens can also be obtained directly via API for debugging purposes:
 
----
+POST /api/auth/token/
 
-## 🔐 HTTPS Details
-
-- HTTPS is enabled via **Let’s Encrypt**
-- Nginx terminates SSL and proxies traffic to Docker containers
-- WebSocket connections are upgraded correctly (`wss://`)
-- No insecure mixed-content requests are used
-
-This ensures:
-- encrypted traffic
-- browser-trusted SSL certificate
-- correct SPA + API + WebSocket integration
+This is **not required** for normal usage — the UI login is the recommended way.
 
 ---
 
 ## 🧩 Configuration Strategy
 
-- `.env` files differ between **local** and **server** environments
-- `docker-compose.yml` is adapted for deployment needs
-- This separation is **intentional and correct**
+- Separate `.env` files are used for local and production environments
+- Docker Compose configuration differs between development and deployment
+- Environment separation avoids hard-coded values and accidental leaks
 - Production configuration is deployment-specific
 
 ---
@@ -599,113 +411,9 @@ You can use the following credentials to test:
 and have no administrative privileges.
 
 ---
-## 🔐 JWT Authentication
 
-The project uses **JWT (access + refresh)** authentication.
-
-- Tokens are stored in `localStorage`
-- UI updates automatically via `auth-changed` event
-- Admin users are marked with **ADMIN badge**
-
-Authorized mode enables:
-- posting comments without CAPTCHA
-- file uploads
-- admin actions (delete comments)
-- real-time WebSocket updates
-
----
-
-## 🧪 Test Credentials
-
-**User (non-admin)**  
-- Login: `user`  
-- Password: `User12345!`
-
-⚠️ For testing only.  
-This user has **no admin permissions**.
-
----
-
-## 🔑 Login (UI – recommended)
-
-1. Open the application:
-```text
-https://comments-spa-t.duckdns.org/
-```
-In the Auth panel:
-enter username
-enter password
-click Login
-
-After successful login:
-status changes to Authorized
-JWT tokens are saved to localStorage
-file uploads become available
-CAPTCHA is disabled
-
-if user is staff/superuser → ADMIN badge appears
-
-🚪 Logout
-
-To return to anonymous mode, click Logout in the UI.
-
-Or manually via browser console:
-
-localStorage.removeItem("access");
-localStorage.removeItem("refresh");
-location.reload();
-
-
-After logout:
-
-application works in anonymous mode
-CAPTCHA is required again
-admin actions are disabled
-
-🧰 Get JWT Tokens via API (optional / debugging)
-
-You can also obtain tokens directly via API:
-
-POST https://comments-spa-t.duckdns.org/api/auth/token/
-
-{
-  "username": "user",
-  "password": "User12345!"
-}
-
-
-Response:
-
-{
-  "access": "<JWT access token>",
-  "refresh": "<JWT refresh token>"
-}
-
-
-Store tokens manually (DevTools → Console):
-
-fetch("https://comments-spa-t.duckdns.org/api/auth/token/", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    username: "user",
-    password: "User12345!"
-  }),
-})
-  .then(r => r.json())
-  .then(t => {
-    localStorage.setItem("access", t.access);
-    localStorage.setItem("refresh", t.refresh);
-    window.dispatchEvent(new Event("auth-changed"));
-    location.reload();
-  });
-
----
 ## 🚀 CI/CD (GitHub Actions)
-
 This project uses **GitHub Actions** to run CI checks and automatically deploy to **AWS EC2**.
-
----
 
 ### ✅ CI (Continuous Integration)
 
@@ -777,42 +485,6 @@ The file can be opened in **MySQL Workbench** to review:
 > as a universal schema viewer for review purposes.
 
 ---
-## 📊 Elasticsearch & Kibana
-
-The project integrates Elasticsearch for full-text search
-and Kibana for analytics and monitoring.
-
-Implemented features:
-- Comments indexing
-- Real-time analytics dashboards
-- Activity monitoring (comments per day/hour)
-- User behavior analysis
-- Attachment statistics
-
-Kibana dashboards demonstrate system observability
-and scalability readiness.
-
-### 🔗 Access URLs
-
-**Production (if enabled):**
-
-- Kibana:  
-  `https://comments-spa-t.duckdns.org/kibana/`  
-  *(or via SSH tunnel / internal access, depending on deployment)*
-
-- Elasticsearch (internal service):  
-  `http://elasticsearch:9200`
-
-**Local environment:**
-
-- Kibana:  
-  `http://localhost:5601`
-
-- Elasticsearch:  
-  `http://localhost:9200`
-
-This integration shows how the application can evolve
-from a simple CRUD system into a **search- and analytics-driven platform**.
 
 ## 🧾 OpenAPI Schema & Swagger Documentation
 
