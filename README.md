@@ -147,12 +147,13 @@ Unauthorized access returns **403 Forbidden**.
 
 ## 📁 Project Structure
 
+```text
 django_comments_spa/
 ├── .github/
 │   └── workflows/
-│       └── ci-cd.yml              # CI (tests/build) + CD (deploy to EC2)
+│       └── ci-cd.yml
 │
-├── accounts/                      # Auth domain (JWT, /me, user info)
+├── accounts/
 │   ├── migrations/
 │   ├── admin.py
 │   ├── models.py
@@ -160,56 +161,69 @@ django_comments_spa/
 │   ├── urls.py
 │   └── views.py
 │
-├── comments/                      # Comments domain (tree, uploads, WS, tasks)
+├── comments/
 │   ├── migrations/
-│   ├── admin.py
-│   ├── consumers.py               # Django Channels (WebSocket)
-│   ├── permissions.py             # Custom permissions (admin delete, etc.)
-│   ├── routing.py                 # WS routes
+│   ├── consumers.py
+│   ├── permissions.py
+│   ├── routing.py
 │   ├── serializers.py
-│   ├── tasks.py                   # Celery tasks (async processing)
+│   ├── tasks.py
 │   ├── urls.py
 │   └── views.py
 │
-├── core/                          # Project core (settings, ASGI/WSGI, Celery init)
+├── core/
 │   ├── settings/
 │   │   ├── base.py
 │   │   ├── local.py
 │   │   └── production.py
-│   ├── asgi.py                    # ASGI app (API + WebSockets)
-│   ├── wsgi.py                    # WSGI app (classic HTTP)
-│   ├── celery.py                  # Celery app configuration
+│   ├── asgi.py
+│   ├── wsgi.py
+│   ├── celery.py
 │   └── urls.py
 │
-├── frontend/                      # Vue 3 + Vite SPA
+├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── api/                   # HTTP client wrappers (comments/accounts)
-│   │   ├── components/            # UI components (AuthBar, CommentForm, Tree)
+│   │   ├── api/
+│   │   ├── components/
 │   │   ├── helpers/
-│   │   ├── i18n/                  # translations
+│   │   ├── i18n/
 │   │   ├── App.vue
 │   │   └── main.js
-│   ├── vite.config.js
-│   └── package.json
+│   ├── package.json
+│   └── vite.config.js
 │
 ├── nginx/
 │   ├── Dockerfile
-│   └── nginx.conf                 # reverse proxy + static/media + WS upgrade
+│   └── nginx.conf
 │
-├── media/                         # Uploaded files (runtime)
-├── staticfiles/                   # Django collectstatic output (runtime)
-│
-├── docker-compose.yml             # Local dev stack
-├── docker-compose.prod.yml        # Production stack (server)
-├── Dockerfile.backend             # Backend image build
-│
-├── .env.local                     # Local environment variables
-├── .env.prod                      # Production environment variables
-├── env.example                    # Example env template
-│
-└── manage.py                      # Django entrypoint
+├── media/
+├── staticfiles/
+├── docker-compose.yml
+├── docker-compose.prod.yml
+├── Dockerfile.backend
+├── .env.local
+├── .env.prod
+├── env.example
+└── manage.py
 
+### Key directories
+
+- `accounts/` — authentication and user management domain.  
+  Contains JWT-based authentication, user-related API endpoints (`/me`), serializers, and permissions logic.
+
+- `comments/` — core business domain of the application.  
+  Implements hierarchical (nested) comments, file uploads, custom permissions, real-time WebSocket consumers (Django Channels), and background processing via Celery tasks.
+
+- `core/` — project-level configuration and infrastructure glue code.  
+  Includes environment-specific settings (base/local/production), ASGI/WSGI application entrypoints, Celery app initialization, and root URL routing.
+
+- `frontend/` — Single Page Application built with Vue 3 and Vite.  
+  Contains UI components, API client wrappers, internationalization (i18n), and application state logic. The frontend communicates with the backend via REST API and WebSockets through a single origin.
+
+- `nginx/` — Nginx reverse proxy configuration.  
+  Handles HTTPS termination, routing of API, WebSocket, static and media requests, and acts as a single entry point for frontend and backend services.
+```
 
 ---
 
