@@ -142,6 +142,29 @@ const messages = {
       preview: "Просмотр",
       send: "Отправить комментарий",
       sendShort: "Отправить",
+
+      text: "Сообщение",
+      previewEmpty: "Нечего показывать",
+      editorMode: "Режим редактора",
+      captchaReload: "Обновить капчу",
+      captchaPlaceholder: "Введите капчу",
+
+      tags: {
+        iTitle: "Курсив",
+        strongTitle: "Жирный",
+        codeTitle: "Код",
+        aTitle: "Ссылка",
+      },
+
+      captchaLoadFail: "Не удалось загрузить капчу. Обновите страницу.",
+      tagsUnclosed: "Проверьте, что все теги закрыты.",
+      requestFailed: "Ошибка запроса. Попробуйте ещё раз.",
+      errTextRequired: "Текст обязателен.",
+      errUserRequired: "Имя обязательно.",
+      errEmailRequired: "Email обязателен.",
+      errCaptchaRequired: "Капча обязательна.",
+      validationFailed: "Проверка не пройдена.",
+      commentAdded: "Комментарий добавлен.",
       placeholder:
         "Введите комментарий... (разрешённые теги: [i] [strong] [code] [a])",
     },
@@ -214,6 +237,29 @@ const messages = {
       preview: "Перегляд",
       send: "Надіслати коментар",
       sendShort: "Надіслати",
+
+      text: "Повідомлення",
+      previewEmpty: "Немає що показувати",
+      editorMode: "Режим редактора",
+      captchaReload: "Оновити капчу",
+      captchaPlaceholder: "Введіть капчу",
+
+      tags: {
+        iTitle: "Курсив",
+        strongTitle: "Жирний",
+        codeTitle: "Код",
+        aTitle: "Посилання",
+      },
+
+      captchaLoadFail: "Не вдалося завантажити капчу. Оновіть сторінку.",
+      tagsUnclosed: "Перевірте, що всі теги закриті.",
+      requestFailed: "Помилка запиту. Спробуйте ще раз.",
+      errTextRequired: "Текст обовʼязковий.",
+      errUserRequired: "Імʼя обовʼязкове.",
+      errEmailRequired: "Email обовʼязковий.",
+      errCaptchaRequired: "Капча обовʼязкова.",
+      validationFailed: "Перевірка не пройдена.",
+      commentAdded: "Коментар додано.",
       placeholder:
         "Напишіть коментар... (дозволені теги: [i] [strong] [code] [a])",
     },
@@ -286,6 +332,29 @@ const messages = {
       preview: "Vorschau",
       send: "Kommentar senden",
       sendShort: "Senden",
+
+      text: "Nachricht",
+      previewEmpty: "Nichts zum Anzeigen",
+      editorMode: "Editor-Modus",
+      captchaReload: "Captcha neu laden",
+      captchaPlaceholder: "Captcha eingeben",
+
+      tags: {
+        iTitle: "Kursiv",
+        strongTitle: "Fett",
+        codeTitle: "Code",
+        aTitle: "Link",
+      },
+
+      captchaLoadFail: "Captcha konnte nicht geladen werden. Bitte neu laden.",
+      tagsUnclosed: "Bitte prüfe, ob alle Tags korrekt geschlossen sind.",
+      requestFailed: "Anfrage fehlgeschlagen. Bitte erneut versuchen.",
+      errTextRequired: "Text ist erforderlich.",
+      errUserRequired: "Name ist erforderlich.",
+      errEmailRequired: "E-Mail ist erforderlich.",
+      errCaptchaRequired: "Captcha ist erforderlich.",
+      validationFailed: "Validierung fehlgeschlagen.",
+      commentAdded: "Kommentar hinzugefügt.",
       placeholder:
         "Schreibe deinen Kommentar... (erlaubte Tags: [i] [strong] [code] [a])",
     },
