@@ -31,7 +31,9 @@ jobs:
           DJANGO_DEBUG: "1"
           ELASTICSEARCH_ENABLED: "0"
           DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
-        run: python manage.py check
+        run: |
+          set -e
+          python manage.py check
 
       - uses: actions/setup-node@v4
         with:
@@ -42,6 +44,7 @@ jobs:
       - name: Frontend build
         working-directory: frontend
         run: |
+          set -e
           npm ci
           npm run build
 
@@ -54,33 +57,41 @@ jobs:
     steps:
       - name: Setup SSH
         run: |
+          set -e
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+
+          # Preserve newlines in multiline private key (echo often breaks it)
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+
           ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy to EC2
         run: |
+          set -e
           ssh -o StrictHostKeyChecking=yes \
-          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
-            set -e
-            cd /home/ubuntu/django-comments-spa
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+              set -e
+              cd /home/ubuntu/django-comments-spa
 
-            git fetch --all
-            git reset --hard origin/main
+              git fetch --all
+              git reset --hard origin/main
 
-            docker compose --env-file .env.prod -f docker-compose.prod.yml down --remove-orphans
-            docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --force-recreate
-            docker compose --env-file .env.prod -f docker-compose.prod.yml ps
-          "
+              docker compose --env-file .env.prod -f docker-compose.prod.yml down --remove-orphans
+              docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --force-recreate
+              docker compose --env-file .env.prod -f docker-compose.prod.yml ps
+          EOF
 
       - name: Healthcheck
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "
-            for i in {1..36}; do
-              curl -fs http://127.0.0.1:8080/api/comments/ && exit 0
-              sleep 5
-            done
-            exit 1
-          "
+          set -e
+          ssh -o StrictHostKeyChecking=yes \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+              set -e
+              for i in {1..36}; do
+                curl -fs http://127.0.0.1:8080/api/comments/ && exit 0
+                sleep 5
+              done
+              exit 1
+          EOF
