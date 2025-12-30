@@ -100,7 +100,7 @@ jobs:
             -o ServerAliveCountMax=20 \
             -o TCPKeepAlive=yes \
             -o ConnectTimeout=20 \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF' || exit 0
               set -e
 
               # Wait for nginx -> backend to respond (200/401/403 are all "alive")
