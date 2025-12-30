@@ -154,9 +154,9 @@ Unauthorized access returns **403 Forbidden**.
 django_comments_spa/
 ├── .github/
 │   └── workflows/
-│       └── ci-cd.yml
+│       └── ci-cd.yml              # CI (tests/build) + CD (deploy to EC2)
 │
-├── accounts/
+├── accounts/                      # Authentication & users
 │   ├── migrations/
 │   ├── admin.py
 │   ├── models.py
@@ -164,51 +164,61 @@ django_comments_spa/
 │   ├── urls.py
 │   └── views.py
 │
-├── comments/
+├── comments/                      # Comments domain
 │   ├── migrations/
-│   ├── consumers.py
-│   ├── permissions.py
-│   ├── routing.py
+│   ├── consumers.py               # WebSocket consumers (Django Channels)
+│   ├── permissions.py             # Custom permissions
+│   ├── routing.py                 # WebSocket routing
 │   ├── serializers.py
-│   ├── tasks.py
+│   ├── tasks.py                   # Celery background tasks
 │   ├── urls.py
 │   └── views.py
 │
-├── core/
+├── core/                          # Project core & configuration
 │   ├── settings/
 │   │   ├── base.py
 │   │   ├── local.py
 │   │   └── production.py
-│   ├── asgi.py
-│   ├── wsgi.py
-│   ├── celery.py
+│   ├── asgi.py                    # ASGI app (HTTP + WebSockets)
+│   ├── wsgi.py                    # WSGI app (HTTP)
+│   ├── celery.py                  # Celery app initialization
 │   └── urls.py
 │
-├── frontend/
+├── frontend/                      # Vue 3 + Vite SPA
 │   ├── public/
 │   ├── src/
-│   │   ├── api/
-│   │   ├── components/
+│   │   ├── api/                   # API client wrappers
+│   │   ├── components/            # UI components
 │   │   ├── helpers/
-│   │   ├── i18n/
+│   │   ├── i18n/                  # Translations
 │   │   ├── App.vue
 │   │   └── main.js
 │   ├── package.json
 │   └── vite.config.js
 │
-├── nginx/
+├── nginx/                         # Reverse proxy
 │   ├── Dockerfile
 │   └── nginx.conf
 │
-├── media/
-├── staticfiles/
-├── docker-compose.yml
-├── docker-compose.prod.yml
-├── Dockerfile.backend
-├── .env.local
-├── .env.prod
-├── env.example
-└── manage.py
+├── docs/                          # Project documentation
+│   ├── screenshots/               # UI and API screenshots
+│   │   ├── main.png
+│   │   ├── auth.png
+│   │   ├── comments.png
+│   │   └── api.png
+│   └── schema.sql                 # Database schema reference
+│
+├── media/                         # Uploaded files (runtime)
+├── staticfiles/                   # Django collectstatic output
+├── docker-compose.yml             # Local development stack
+├── docker-compose.prod.yml        # Production stack
+├── Dockerfile.backend             # Backend image build
+├── .env.local                     # Local environment variables
+├── .env.prod                      # Production environment variables
+├── env.example                    # Environment template
+└── manage.py                      # Django entry point
+
+
 
 ### Key directories
 
@@ -219,13 +229,19 @@ django_comments_spa/
   Implements hierarchical (nested) comments, file uploads, custom permissions, real-time WebSocket consumers (Django Channels), and background processing via Celery tasks.
 
 - `core/` — project-level configuration and infrastructure glue code.  
-  Includes environment-specific settings (base/local/production), ASGI/WSGI application entrypoints, Celery app initialization, and root URL routing.
+  Includes environment-specific settings (base/local/production), ASGI/WSGI application entrypoints,
+   Celery app initialization, and root URL routing.
 
 - `frontend/` — Single Page Application built with Vue 3 and Vite.  
-  Contains UI components, API client wrappers, internationalization (i18n), and application state logic. The frontend communicates with the backend via REST API and WebSockets through a single origin.
+  Contains UI components, API client wrappers, internationalization (i18n), and application state logic.
+   The frontend communicates with the backend via REST API and WebSockets through a single origin.
 
 - `nginx/` — Nginx reverse proxy configuration.  
-  Handles HTTPS termination, routing of API, WebSocket, static and media requests, and acts as a single entry point for frontend and backend services.
+  Handles HTTPS termination, routing of API, WebSocket, static and media requests, and acts as a single entry point for
+   frontend and backend services.
+  
+- `docs/` — project documentation and reference materials.
+Contains screenshots used in the README and additional documentation artifacts (e.g. database schema).
 ```
 
 ---
@@ -599,3 +615,40 @@ Python Backend Developer
 ## 📄 License
 
 MIT
+
+---
+
+## 📸 Screenshots
+
+### Main view (anonymous mode)
+
+![Main view](docs/screenshots/main.png)
+
+Anonymous user mode with comment form and CAPTCHA enabled.
+
+---
+
+### Authorized mode (JWT + admin)
+
+![Authorized](docs/screenshots/auth.png)
+
+Authorized user interface with JWT authentication, disabled CAPTCHA,
+file uploads enabled and visible **ADMIN** badge.
+
+---
+
+### Nested comments
+
+![Comments](docs/screenshots/comments.png)
+
+Hierarchical (tree-based) comments with unlimited nesting,
+reply functionality and admin moderation actions.
+
+---
+
+### API documentation
+
+![API](docs/screenshots/api.png)
+
+Interactive API documentation (OpenAPI / Swagger) with JWT authentication,
+admin-only endpoints and request/response schemas.
