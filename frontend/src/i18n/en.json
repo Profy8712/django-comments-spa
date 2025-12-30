@@ -1,0 +1,40 @@
+{
+  "form": {
+    "userInfo": "User info",
+    "userName": "User name",
+    "email": "E-mail",
+    "homepage": "Home page",
+    "content": "Content",
+    "write": "Write",
+    "preview": "Preview",
+    "text": "Message",
+    "previewEmpty": "Nothing to preview",
+    "security": "Security",
+    "captcha": "CAPTCHA",
+    "sendShort": "Send",
+    "cancel": "Cancel",
+
+    "captchaLoadFail": "Failed to load CAPTCHA. Please reload.",
+    "tagsUnclosed": "Please make sure all tags are properly closed.",
+    "requestFailed": "Request failed. Please try again.",
+    "errTextRequired": "Text is required.",
+    "errUserRequired": "User name is required.",
+    "errEmailRequired": "E-mail is required.",
+    "errCaptchaRequired": "CAPTCHA is required.",
+    "validationFailed": "Validation failed.",
+    "commentAdded": "Comment added.",
+
+    "editorMode": "Editor mode",
+    "captchaReload": "Reload CAPTCHA",
+    "captchaPlaceholder": "Enter CAPTCHA",
+    "tags": {
+      "iTitle": "Italic",
+      "strongTitle": "Bold",
+      "codeTitle": "Code",
+      "aTitle": "Link"
+    }
+  },
+  "attachments": {
+    "chooseTitle": "Choose file"
+  }
+}

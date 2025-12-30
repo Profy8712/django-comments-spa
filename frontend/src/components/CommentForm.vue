@@ -6,7 +6,7 @@
     </div>
 
     <!-- User info (anonymous only) -->
-    <div v-if="!hasJwt" class="section">
+    <div v-if="!hasJwt" class="section section-security">
       <div class="section-title">{{ $t("form.userInfo") }}</div>
 
       <div class="grid3">
@@ -153,7 +153,7 @@
     </div>
 
     <!-- Security (anonymous only) -->
-    <div v-if="!hasJwt" class="section">
+    <div v-if="!hasJwt" class="section section-security">
       <div class="section-title">{{ $t("form.security") }}</div>
 
       <div class="form-group">
@@ -279,7 +279,8 @@
 </template>
 
 <script>
-import { apiGet, getAccessToken, buildUrl } from "../api/index";
+import { apiGet, buildUrl } from "../api/index";
+import { getAccessToken } from "../api/auth";
 import { createComment, uploadFiles } from "../api/comments";
 
 export default {
@@ -822,7 +823,7 @@ export default {
 .grid3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 @media (max-width: 920px) {
   .grid3 {
@@ -898,7 +899,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -912,7 +913,7 @@ export default {
   text-align: center;
   border: 1px solid rgba(96, 165, 250, 0.35);
   background: rgba(96, 165, 250, 0.10);
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 7px 10px;
   cursor: pointer;
   font-size: 13px;
@@ -994,7 +995,7 @@ html[data-theme="light"] .tab.on {
 .p-code {
   margin: 8px 0;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface-2);
   overflow: auto;
@@ -1110,7 +1111,7 @@ html[data-theme="light"] .dz-btn {
 
 .file-left {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   min-width: 0;
 }
@@ -1118,7 +1119,7 @@ html[data-theme="light"] .dz-btn {
 .thumb {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface-2);
   background-size: cover;
@@ -1166,7 +1167,7 @@ html[data-theme="light"] .dz-btn {
 .file-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .file-error {
@@ -1190,13 +1191,13 @@ html[data-theme="light"] .dz-btn {
 /* Captcha */
 .captcha-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .captcha-image {
-  height: 42px;
+  height: 36px;
   width: auto;
   border-radius: 10px;
   border: 1px solid var(--border);
@@ -1204,10 +1205,10 @@ html[data-theme="light"] .dz-btn {
 }
 
 .captcha-reload {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  border-radius: 12px;
+  border-radius: 10px;
 
   border: 1px solid rgba(96, 165, 250, 0.35);
   background: rgba(96, 165, 250, 0.10);
@@ -1221,8 +1222,8 @@ html[data-theme="light"] .dz-btn {
 
 .captcha-input {
   flex: 1;
-  min-width: 220px;
-  height: 42px;
+  min-width: 180px;
+  height: 36px;
   padding-top: 0;
   padding-bottom: 0;
 }
@@ -1231,8 +1232,8 @@ html[data-theme="light"] .dz-btn {
 .form-actions {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-top: 4px;
+  gap: 8px;
+  margin-top: 2px;
   flex-wrap: wrap;
 }
 
@@ -1298,4 +1299,26 @@ html[data-theme="light"] .spinner {
   white-space: nowrap;
   border: 0;
 }
+
+/* --- Compact Security section --- */
+.section-security .form-group {
+  margin-bottom: 8px;
+}
+
+.section-security .form-label {
+  margin-bottom: 6px;
+}
+
+.section-security .captcha-row {
+  margin-top: 4px;
+}
+
+.section-security .error-text {
+  margin-top: 6px;
+}
+
+.section-security .section-title + .form-group {
+  padding-top: 4px;
+}
+
 </style>
