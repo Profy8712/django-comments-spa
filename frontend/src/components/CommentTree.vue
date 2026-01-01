@@ -57,7 +57,8 @@
               loading="lazy"
             />
             <a
-          v-if="depth >= maxDepth && c.children && c.children.length"              class="attach-item"
+              v-else
+              class="attach-item"
               :href="a.file"
               target="_blank"
               rel="noreferrer"

@@ -1,6 +1,9 @@
+import os
 import re
+from typing import Optional
 
 from captcha.models import CaptchaStore
+from django.core.files.base import ContentFile
 from django.db import transaction
 from rest_framework import serializers
 
@@ -8,16 +11,16 @@ from .models import Attachment, Comment
 
 
 class AttachmentSerializer(serializers.ModelSerializer):
-    # IMPORTANT: keep field name "file" for frontend compatibility
+    # Keep field name "file" for frontend compatibility
     file = serializers.SerializerMethodField()
 
     class Meta:
         model = Attachment
         fields = ("id", "file", "uploaded_at")
 
-    def get_file(self, obj) -> str | None:
+    def get_file(self, obj) -> Optional[str]:
         """
-        Return RELATIVE URL like "/media/attachments/...".
+        Return relative URL like "/media/attachments/...".
         Works locally (Vite proxy) and in production (nginx serves /media).
         """
         if not obj.file:
@@ -28,8 +31,6 @@ class AttachmentSerializer(serializers.ModelSerializer):
             return None
 
 
-
-
 class AttachmentUploadSerializer(serializers.ModelSerializer):
     file = serializers.SerializerMethodField()
 
@@ -37,7 +38,7 @@ class AttachmentUploadSerializer(serializers.ModelSerializer):
         model = Attachment
         fields = ("id", "file", "upload_key", "uploaded_at")
 
-    def get_file(self, obj) -> str | None:
+    def get_file(self, obj) -> Optional[str]:
         if not obj.file:
             return None
         try:
@@ -53,7 +54,6 @@ class AttachmentCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
 
-# --- Recursive serializer for children (replies) ---
 class CommentChildSerializer(serializers.ModelSerializer):
     attachments = AttachmentSerializer(many=True, read_only=True)
     children = serializers.SerializerMethodField()
@@ -73,7 +73,6 @@ class CommentChildSerializer(serializers.ModelSerializer):
         )
 
     def get_children(self, obj):
-        # Replies should be shown UNDER parent (old -> new)
         qs = obj.children.all().order_by("created_at")
         return CommentChildSerializer(qs, many=True, context=self.context).data
 
@@ -107,7 +106,6 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "created_at", "attachments", "children")
 
     def get_children(self, obj):
-        # Replies should be shown UNDER parent (old -> new)
         qs = obj.children.all().order_by("created_at")
         return CommentChildSerializer(qs, many=True, context=self.context).data
 
@@ -167,7 +165,6 @@ class CommentSerializer(serializers.ModelSerializer):
             attrs.pop("captcha_value", None)
             return attrs
 
-        # anonymous: captcha required
         key = (attrs.get("captcha_key") or "").strip()
         value = (attrs.get("captcha_value") or "").strip()
 
@@ -195,6 +192,20 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class CommentCreateSerializer(CommentSerializer):
+    """
+    Create comment and optionally attach files.
+
+    Supports two workflows:
+    1) Two-step upload (JWT):
+       - POST /api/comments/upload/ (multipart, returns {id, upload_key})
+       - POST /api/comments/ with {attachment_ids: [...], upload_key: "..."} to bind
+       This needs MOVING files from tmp to comment folder (fixed below).
+
+    2) Single-step create with files:
+       - POST /api/comments/ as multipart with files[] + fields (optional)
+       Will create Attachment(comment=comment, file=f) directly.
+    """
+
     attachment_ids = serializers.ListField(
         child=serializers.IntegerField(),
         required=False,
@@ -203,8 +214,16 @@ class CommentCreateSerializer(CommentSerializer):
     )
     upload_key = serializers.UUIDField(required=False, write_only=True)
 
+    # Optional single-request upload
+    files = serializers.ListField(
+        child=serializers.FileField(),
+        required=False,
+        allow_empty=True,
+        write_only=True,
+    )
+
     class Meta(CommentSerializer.Meta):
-        fields = CommentSerializer.Meta.fields + ("attachment_ids", "upload_key")
+        fields = CommentSerializer.Meta.fields + ("attachment_ids", "upload_key", "files")
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
@@ -213,7 +232,9 @@ class CommentCreateSerializer(CommentSerializer):
         key = attrs.get("upload_key")
 
         if ids and not key:
-            raise serializers.ValidationError({"upload_key": ["upload_key is required when attachment_ids provided"]})
+            raise serializers.ValidationError(
+                {"upload_key": ["upload_key is required when attachment_ids provided"]}
+            )
 
         return attrs
 
@@ -221,18 +242,39 @@ class CommentCreateSerializer(CommentSerializer):
     def create(self, validated_data):
         ids = validated_data.pop("attachment_ids", [])
         key = validated_data.pop("upload_key", None)
+        files = validated_data.pop("files", [])
 
         comment = super().create(validated_data)
 
+        # Single-step: create attachments already bound to comment
+        for f in files:
+            Attachment.objects.create(comment=comment, file=f)
+
+        # Two-step: bind temp attachments (comment is NULL) and MOVE files to comment folder
         if ids:
-            qs = Attachment.objects.select_for_update().filter(
-                id__in=ids,
-                upload_key=key,
-                comment__isnull=True,
+            attachments = list(
+                Attachment.objects.select_for_update().filter(
+                    id__in=ids,
+                    upload_key=key,
+                    comment__isnull=True,
+                )
             )
-            if qs.count() != len(ids):
-                raise serializers.ValidationError({"attachment_ids": ["Some attachments are invalid or already used"]})
-            qs.update(comment=comment)
+            if len(attachments) != len(ids):
+                raise serializers.ValidationError(
+                    {"attachment_ids": ["Some attachments are invalid or already used"]}
+                )
+
+            for att in attachments:
+                # bind
+                att.comment = comment
+
+                # move file by re-saving it (upload_to will now resolve to attachments/<comment_id>/...)
+                old_name = att.file.name
+                data = att.file.read()
+                filename = os.path.basename(old_name)
+
+                att.file.save(filename, ContentFile(data), save=False)
+                att.save()
 
         return comment
 

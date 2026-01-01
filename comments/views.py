@@ -1,6 +1,5 @@
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 
@@ -29,17 +28,19 @@ class CommentListCreateView(generics.ListCreateAPIView):
       - anonymous -> allowed, CAPTCHA required (handled in serializer)
       - JWT user  -> allowed, CAPTCHA not required
     """
-    serializer_class = CommentSerializer
+
+    permission_classes = [AllowAny]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["user_name", "email", "created_at"]
+    ordering = ["-created_at"]
+
+    # IMPORTANT: allow multipart for single-step files[] upload
+    parser_classes = [parsers.JSONParser, parsers.MultiPartParser, parsers.FormParser]
 
     def get_serializer_class(self):
         if self.request.method == "POST":
             return CommentCreateSerializer
         return CommentSerializer
-    permission_classes = [AllowAny]
-
-    filter_backends = [filters.OrderingFilter]
-    ordering_fields = ["user_name", "email", "created_at"]
-    ordering = ["-created_at"]
 
     def get_queryset(self):
         return (
@@ -73,6 +74,7 @@ class CommentDetailView(generics.RetrieveAPIView):
     """
     GET: public
     """
+
     queryset = Comment.objects.all().prefetch_related(
         "attachments",
         "children",
@@ -94,6 +96,7 @@ class CaptchaAPIView(APIView):
     GET /api/comments/captcha/
     -> { "key": "<hash>", "image": "/captcha/image/<hash>/" }
     """
+
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -103,13 +106,13 @@ class CaptchaAPIView(APIView):
         return Response({"key": key, "image": url}, status=status.HTTP_200_OK)
 
 
-
 class AttachmentTempUploadView(generics.CreateAPIView):
     """
     Upload attachments WITHOUT comment id (JWT only).
     POST /api/comments/upload/
     Response: { id, file, upload_key, uploaded_at }
     """
+
     serializer_class = AttachmentUploadSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
     permission_classes = [IsAuthenticated]
@@ -120,12 +123,16 @@ class AttachmentTempUploadView(generics.CreateAPIView):
             return Response({"file": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
 
         instance = Attachment.objects.create(file=f)
-        return Response(AttachmentUploadSerializer(instance).data, status=status.HTTP_201_CREATED)
+        data = AttachmentUploadSerializer(instance, context={"request": request}).data
+        return Response(data, status=status.HTTP_201_CREATED)
+
 
 class AttachmentUploadView(generics.CreateAPIView):
     """
-    Upload attachments ONLY with JWT.
+    Upload attachments ONLY with JWT and attach to existing comment by pk.
+    POST /api/comments/<pk>/upload/
     """
+
     serializer_class = AttachmentCreateSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
     permission_classes = [IsAuthenticated]
@@ -145,21 +152,28 @@ class AttachmentUploadView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
 
-        return Response(AttachmentSerializer(instance).data, status=status.HTTP_201_CREATED)
+        return Response(
+            AttachmentSerializer(instance, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class CommentSearchAPIView(APIView):
     """
-    GET /api/search/comments/?q=...
+    GET /api/comments/search/?q=...
     Public endpoint.
     """
+
     serializer_class = CommentSearchResultSerializer
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
         q = (request.query_params.get("q") or "").strip()
         if not q:
-            return Response({"detail": "Query param 'q' is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Query param 'q' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         search = (
             CommentDocument.search()
@@ -189,7 +203,10 @@ class CommentSearchAPIView(APIView):
         total = getattr(res.hits, "total", None)
         total_value = getattr(total, "value", len(items)) if total else len(items)
 
-        return Response({"query": q, "count": total_value, "results": data}, status=status.HTTP_200_OK)
+        return Response(
+            {"total": total_value, "items": data},
+            status=status.HTTP_200_OK,
+        )
 
 
 class AdminCommentDeleteView(generics.DestroyAPIView):
@@ -197,18 +214,6 @@ class AdminCommentDeleteView(generics.DestroyAPIView):
     DELETE /api/comments/admin/comments/<id>/
     Admin-only endpoint for deleting comments.
     """
+
     queryset = Comment.objects.all()
     permission_classes = [IsStaffOrSuperuser]
-
-    def delete(self, request, *args, **kwargs):
-        comment = self.get_object()
-
-        # Optional hardening:
-        # forbid deleting comments that have replies
-        # if comment.children.exists():
-        #     return Response(
-        #         {"detail": "Cannot delete comment with replies."},
-        #         status=status.HTTP_400_BAD_REQUEST,
-        #     )
-
-        return super().delete(request, *args, **kwargs)
