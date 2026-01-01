@@ -439,7 +439,7 @@ wss://comments-spa-t.duckdns.org/ws/comments/
 Used to obtain **access** and **refresh** tokens.
 
 ```yaml
-POST https://comments-spa-t.duckdns.org/api/auth/token/
+https://comments-spa-t.duckdns.org/api/auth/token/
 ```
 
 **Request body (JSON):**
