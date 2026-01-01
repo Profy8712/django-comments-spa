@@ -37,3 +37,9 @@ class RegisterSerializer(serializers.Serializer):
             password=validated_data["password"],
         )
         return user
+
+
+class RegisterResponseSerializer(serializers.Serializer):
+    user = UserPublicSerializer()
+    refresh = serializers.CharField()
+    access = serializers.CharField()
