@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 
 import '../../../core/http_client.dart';
 import '../data/comments_api.dart';
+import 'form/add_comment_page.dart';
 
 class CommentsPage extends StatefulWidget {
   const CommentsPage({super.key});
@@ -37,13 +38,8 @@ class _CommentsPageState extends State<CommentsPage> {
     });
 
     try {
-      final data = await _api.fetchComments(
-        page: _page,
-        ordering: _ordering,
-      );
-
+      final data = await _api.fetchComments(page: _page, ordering: _ordering);
       final results = (data['results'] as List?) ?? [];
-
       setState(() {
         _items = results;
         _loading = false;
@@ -64,12 +60,25 @@ class _CommentsPageState extends State<CommentsPage> {
     _load();
   }
 
+  Future<void> _openAdd() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AddCommentPage()),
+    );
+    // after return, refresh list
+    await _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Comments'),
         actions: [
+          IconButton(
+            onPressed: _openAdd,
+            icon: const Icon(Icons.add),
+            tooltip: 'Add comment',
+          ),
           PopupMenuButton<String>(
             onSelected: _setOrdering,
             itemBuilder: (context) => const [
@@ -89,10 +98,7 @@ class _CommentsPageState extends State<CommentsPage> {
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
+                    child: Text(_error!, style: const TextStyle(color: Colors.red)),
                   ),
                 )
               : Column(
@@ -105,9 +111,7 @@ class _CommentsPageState extends State<CommentsPage> {
                           final item = _items[index];
                           return ListTile(
                             title: Text(item['username'] ?? '—'),
-                            subtitle: Text(
-                              '${item['email'] ?? ''}\n${item['text'] ?? ''}',
-                            ),
+                            subtitle: Text('${item['email'] ?? ''}\n${item['text'] ?? ''}'),
                             isThreeLine: true,
                           );
                         },

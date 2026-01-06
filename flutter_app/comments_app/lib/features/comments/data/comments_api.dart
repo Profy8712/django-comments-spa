@@ -1,16 +1,14 @@
 import 'package:dio/dio.dart';
 
+import 'captcha_data.dart';
+
 class CommentsApi {
   final Dio _dio;
 
   CommentsApi(this._dio);
 
-  /// Fetch comments list from:
   /// GET /api/comments/
-  ///
-  /// Supports common query params (depending on backend):
-  /// - page
-  /// - ordering (e.g. "created_at", "-created_at", "username", "-username", "email", "-email")
+  /// Common params: page, ordering
   Future<Map<String, dynamic>> fetchComments({
     int page = 1,
     String? ordering,
@@ -26,7 +24,16 @@ class CommentsApi {
     if (resp.data is Map<String, dynamic>) {
       return resp.data as Map<String, dynamic>;
     }
-
     throw StateError('Unexpected response type: ${resp.data.runtimeType}');
+  }
+
+  /// GET /api/comments/captcha/
+  Future<CaptchaData> fetchCaptcha() async {
+    final resp = await _dio.get('/api/comments/captcha/');
+
+    if (resp.data is Map<String, dynamic>) {
+      return CaptchaData.fromJson(resp.data as Map<String, dynamic>);
+    }
+    throw StateError('Unexpected captcha response type: ${resp.data.runtimeType}');
   }
 }
